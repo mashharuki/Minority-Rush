@@ -78,11 +78,41 @@ been removed (404). Etherscan verification is unaffected.
 
 ## 6. Publish the web app (Vercel)
 
-- Root directory `apps/web`, framework Vite, build `bun run build`, output `dist`.
-- SPA rewrite: add `apps/web/vercel.json` with `{"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}` if deep links are added.
-- Env (public values only): `VITE_SEPOLIA_RPC_URL` (use a key restricted to your domain), optional
-  `VITE_GAME_ADDRESS`, `VITE_RUSH_CHIP_ADDRESS`. Never put private keys in `VITE_*`.
-- Sepolia relayer (`relayer.testnet.zama.org`) needs no API key.
+Two separate Vercel projects (the sponsor API holds the Pimlico key, so it must not share a project with the web app):
+
+| Project | Directory | Live URL |
+| --- | --- | --- |
+| `minority-rush-web` | `apps/web` | https://minority-rush-web.vercel.app |
+| `minority-rush-sponsor` | `apps/sponsor-api` | https://minority-rush-sponsor.vercel.app/api/sponsor |
+
+Config lives in `apps/web/vercel.json` (SPA rewrite, no-cache `sw.js`, basic security headers) and
+`apps/sponsor-api/vercel.json`. One-time setup (already done for the projects above):
+
+```bash
+cd apps/web && npx vercel@latest link --yes --project minority-rush-web
+cd apps/sponsor-api && npx vercel@latest link --yes --project minority-rush-sponsor
+```
+
+**Environment variables** are copied from each app's `.env.local` without printing them:
+
+```bash
+SENSITIVE=1 scripts/vercel-env-sync.sh apps/sponsor-api production PRIVY_APP_ID PRIVY_VERIFICATION_KEY PIMLICO_API_KEY PIMLICO_SPONSORSHIP_POLICY_ID CHIP_ADDRESS GAME_ADDRESS
+scripts/vercel-env-sync.sh apps/web production VITE_PRIVY_APP_ID VITE_PRIVY_CLIENT_ID VITE_SEPOLIA_RPC_URL
+```
+
+Public values set directly: `ALLOWED_WEB_ORIGIN` (sponsor) and `VITE_SPONSOR_API_URL` (web). Never put private keys
+in `VITE_*`; restrict the RPC key (it ships in the bundle) to your domain.
+
+**Deploy** (use the latest CLI: the installed one may be too old for the API):
+
+```bash
+cd apps/sponsor-api && npx --yes vercel@latest deploy --prod --yes
+cd apps/web && npx --yes vercel@latest deploy --prod --yes
+```
+
+**After deploying**: add the web origin (`https://minority-rush-web.vercel.app`) to *Allowed origins* in the Privy
+dashboard, then log in once on the live site. If you change the contracts, redeploy them, run `export:abi`, update the
+env addresses and redeploy both projects. Sepolia relayer (`relayer.testnet.zama.org`) needs no API key.
 
 ## 7. Submission checklist
 
