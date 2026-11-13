@@ -5,12 +5,19 @@ import {FHE, ebool, euint8, euint64, externalEuint8, externalEuint64} from "@fhe
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984.sol";
 
+/// @dev Minimal view of RushChip's ERC7984ObserverAccess extension.
+interface IObserverAccess {
+    function observer(address account) external view returns (address);
+}
+
 /// @title MinorityRushGame
 /// @notice Pick SUN or MOON and stake chips, both encrypted. The side with the SMALLER total stake wins;
 ///         winners are paid 2x their stake. A tie is broken by on-chain encrypted randomness.
 /// @dev Public: round timing, player addresses/count, status, final winning side.
 ///      Private: each player's side, stake, reward and the per-side pools.
 ///      Players must first call `RushChip.setOperator(game, until)`.
+///      Smart-account players register their owner EOA as chip observer; the game then also grants that observer
+///      ACL access to the player's choice, stake and reward (so the owner EOA can decrypt them).
 contract MinorityRushGame is ZamaEthereumConfig {
     enum Status {
         None,
@@ -136,6 +143,11 @@ contract MinorityRushGame is ZamaEthereumConfig {
         FHE.allowThis(stake);
         FHE.allow(choice, msg.sender);
         FHE.allow(stake, msg.sender);
+        address entryObserver = IObserverAccess(address(chip)).observer(msg.sender);
+        if (entryObserver != address(0)) {
+            FHE.allow(choice, entryObserver);
+            FHE.allow(stake, entryObserver);
+        }
 
         emit Entered(roundId, msg.sender);
     }
@@ -199,6 +211,8 @@ contract MinorityRushGame is ZamaEthereumConfig {
         e.reward = reward;
         FHE.allowThis(reward);
         FHE.allow(reward, msg.sender);
+        address rewardObserver = IObserverAccess(address(chip)).observer(msg.sender);
+        if (rewardObserver != address(0)) FHE.allow(reward, rewardObserver);
         FHE.allowTransient(reward, address(chip));
         chip.confidentialTransfer(msg.sender, reward);
 

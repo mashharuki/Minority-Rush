@@ -8,6 +8,13 @@ export const env = {
   gameAddress: (import.meta.env.VITE_GAME_ADDRESS as string | undefined) || deployment.game,
   /** Force the offline simulation, e.g. `VITE_DEMO_MODE=true`. */
   forceDemo: import.meta.env.VITE_DEMO_MODE === "true",
+  privyAppId: (import.meta.env.VITE_PRIVY_APP_ID as string | undefined) || "",
+  privyClientId: (import.meta.env.VITE_PRIVY_CLIENT_ID as string | undefined) || "",
+  /** Public URL of apps/sponsor-api (`.../api/sponsor`). Holds no secrets; calls need a Privy access token. */
+  sponsorApiUrl: (import.meta.env.VITE_SPONSOR_API_URL as string | undefined) || "",
 };
 
 export const isDeployed: boolean = env.chipAddress !== ZERO && env.gameAddress !== ZERO && !env.forceDemo;
+
+/** Email login + gasless smart-account play needs Privy and the sponsor API; otherwise only injected wallets. */
+export const isAaEnabled: boolean = isDeployed && env.privyAppId !== "" && env.sponsorApiUrl !== "";

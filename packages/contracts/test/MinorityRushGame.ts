@@ -210,4 +210,38 @@ describe("MinorityRushGame", function () {
       await expect(enter(1, signers[9], SUN, 1)).to.be.revertedWithCustomError(game, "RoundFull");
     });
   });
+  describe("observer (smart-account owner EOA)", function () {
+    it("lets the registered observer decrypt balance, choice, stake and reward, and nobody else", async function () {
+      // alice stands in for a smart account, carol for its owner EOA
+      await fund(alice);
+      await fund(bob);
+      await chip.connect(alice).setObserver(alice.address, carol.address);
+      expect(await chip.observer(alice.address)).to.eq(carol.address);
+
+      const balanceHandle = await chip.confidentialBalanceOf(alice.address);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, balanceHandle, chipAddr, carol)).to.eq(20n);
+
+      await game.startRound();
+      await enter(1, alice, SUN, 5);
+      await enter(1, bob, MOON, 2);
+      const [, , choice, stake] = await game.getEntry(1, alice.address);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint8, choice, gameAddr, carol)).to.eq(0n);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, stake, gameAddr, carol)).to.eq(5n);
+      await expect(fhevm.userDecryptEuint(FhevmType.euint64, stake, gameAddr, mallory)).to.be.rejected;
+
+      await settle(1);
+      await game.connect(alice).claim(1);
+      const [, , , , reward] = await game.getEntry(1, alice.address);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, reward, gameAddr, carol)).to.eq(0n); // SUN lost
+      const after = await chip.confidentialBalanceOf(alice.address);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, after, chipAddr, carol)).to.eq(15n);
+    });
+
+    it("only the account itself can set its observer", async function () {
+      await expect(chip.connect(mallory).setObserver(alice.address, mallory.address)).to.be.revertedWithCustomError(
+        chip,
+        "Unauthorized",
+      );
+    });
+  });
 });
