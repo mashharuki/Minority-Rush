@@ -1198,3 +1198,50 @@
           }
         }
 }
+
+@layer lism-custom {
+  .c--offline {
+    position: absolute;
+    z-index: 30;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 34px 16px 8px;
+    background: var(--red);
+    color: var(--ink);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .c--offline.is--update {
+    background: var(--mint);
+  }
+  .c--offline button {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--ink);
+    border-radius: 99px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .c--installBtn {
+    margin-top: 10px;
+    color: var(--ink);
+    border-color: rgba(33, 35, 61, 0.3);
+  }
+  .c--installNote {
+    margin: 12px 0 0;
+    color: rgba(33, 35, 61, 0.6);
+    font-size: 0.7rem;
+    text-align: center;
+  }
+  .c--verifyLink {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}

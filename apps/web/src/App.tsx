@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { AppBar, Disclaimer, ErrorBox, SidePicker, StakeSlider, StatusBar, Timer } from '@/components'
+import {
+  AppBar,
+  Disclaimer,
+  ErrorBox,
+  InstallHint,
+  OfflineBanner,
+  SidePicker,
+  StakeSlider,
+  StatusBar,
+  Timer,
+  UpdateBanner,
+} from '@/components'
 import { createGameClient } from '@/lib/client'
+import { env, isDeployed } from '@/lib/env'
+import { usePwa } from '@/lib/pwa'
 import { errorMessage, type MyResult, type RoundState, type Side } from '@/lib/types'
 
 type Screen = 'login' | 'setup' | 'pick' | 'sealed' | 'reveal'
@@ -47,7 +60,9 @@ export default function App() {
   const [result, setResult] = useState<MyResult | null>(null)
   const [isBusy, setIsBusy] = useState(false)
   const settling = useRef(false)
+  const pwa = usePwa()
 
+  const isLocked = isBusy || pwa.isOffline
   const { round, refresh } = useRound(client, screen === 'pick' || screen === 'sealed')
   const secondsLeft = useCountdown(round?.endTime ?? 0)
 
@@ -110,12 +125,12 @@ export default function App() {
 
   // Anyone can settle after the deadline; the first client to notice does it automatically.
   useEffect(() => {
-    if (!canSettle || settling.current || isBusy) return
+    if (!canSettle || settling.current || isBusy || pwa.isOffline) return
     settling.current = true
     void settleAndClaim().finally(() => {
       settling.current = false
     })
-  }, [canSettle, round, isBusy, settleAndClaim])
+  }, [canSettle, round, isBusy, pwa.isOffline, settleAndClaim])
 
   const playAgain = () => {
     setResult(null)
@@ -130,6 +145,8 @@ export default function App() {
     <main className="c--canvas">
       <section className="c--phoneStage" aria-label="Minority Rush">
         <div className="c--phone">
+          <OfflineBanner isOffline={pwa.isOffline} />
+          <UpdateBanner hasUpdate={pwa.hasUpdate && !pwa.isOffline} isLocked={isBusy} onUpdate={() => void pwa.applyUpdate()} />
           {screen === 'login' && (
             <section className="c--screen c--login is--active">
               <StatusBar />
@@ -142,7 +159,7 @@ export default function App() {
                   <p className="c--loginCopy">Choose a side. Set a secret stake. Win by thinking unlike the crowd.</p>
                 </div>
                 <div className="c--loginForm">
-                  <button className="c--btn" type="button" onClick={connect} disabled={isBusy}>
+                  <button className="c--btn" type="button" onClick={connect} disabled={isLocked}>
                     {client.mode === 'demo' ? 'Play the demo' : 'Connect wallet'}
                   </button>
                   <span className="c--trustLine">
@@ -169,7 +186,7 @@ export default function App() {
                   <ErrorBox message={error} />
                 </div>
                 {error && (
-                  <button className="c--btn" type="button" onClick={connect} disabled={isBusy}>
+                  <button className="c--btn" type="button" onClick={connect} disabled={isLocked}>
                     Try again
                   </button>
                 )}
@@ -183,7 +200,7 @@ export default function App() {
               <StatusBar />
               <AppBar
                 right={
-                  <button className="c--balancePill" type="button" onClick={revealBalance} disabled={isBusy}>
+                  <button className="c--balancePill" type="button" onClick={revealBalance} disabled={isLocked}>
                     <i /> {balance === null ? 'Reveal balance' : `${balance} private chips`}
                   </button>
                 }
@@ -201,7 +218,7 @@ export default function App() {
                 </div>
                 <SidePicker value={side} onChange={setSide} />
                 <StakeSlider value={stake} onChange={setStake} />
-                <button className="c--btn c--sealBtn" type="button" onClick={seal} disabled={isBusy}>
+                <button className="c--btn c--sealBtn" type="button" onClick={seal} disabled={isLocked}>
                   {isBusy ? (step ?? 'Working…') : `Seal ${side === 'sun' ? 'Sun' : 'Moon'} · ${stake} RUSH`}
                 </button>
                 <ErrorBox message={error} />
@@ -238,7 +255,7 @@ export default function App() {
                 <div style={{ width: '100%' }}>
                   <ErrorBox message={error} />
                   {error && (
-                    <button className="c--btn is--moon" type="button" onClick={() => void settleAndClaim()} disabled={isBusy}>
+                    <button className="c--btn is--moon" type="button" onClick={() => void settleAndClaim()} disabled={isLocked}>
                       Retry reveal
                     </button>
                   )}
@@ -271,11 +288,27 @@ export default function App() {
                   </div>
                   <div className="c--proofRow">
                     <i>✓</i>
-                    <span>Winner verified by on-chain decryption proof · Your stake remains private</span>
+                    <span>
+                      Winner verified by on-chain decryption proof · Your stake remains private
+                      {isDeployed && (
+                        <>
+                          {' · '}
+                          <a
+                            className="c--verifyLink"
+                            href={`https://sepolia.etherscan.io/address/${env.gameAddress}#events`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Verify on Etherscan
+                          </a>
+                        </>
+                      )}
+                    </span>
                   </div>
                   <button className="c--btn" type="button" onClick={playAgain}>
                     Play the next round
                   </button>
+                  <InstallHint canInstall={pwa.canInstall} isIosSafari={pwa.isIosSafari} onInstall={() => void pwa.install()} />
                   <Disclaimer />
                 </div>
               </div>
