@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "skills": {
+    "hardhat": {
+      "source": "NomicFoundation/hardhat-skills",
+      "sourceType": "github",
+      "skillPath": "skills/hardhat/SKILL.md",
+      "computedHash": "44bdb0b516d9048c308aa27fc1ba08dd0aa9f75733c349a88e9d9bcffe612fc0"
+    },
+    "hardhat-toolbox-mocha-ethers": {
+      "source": "NomicFoundation/hardhat-skills",
+      "sourceType": "github",
+      "skillPath": "skills/hardhat-toolbox-mocha-ethers/SKILL.md",
+      "computedHash": "5d3b715571b34fc776365005f02e54aaca69130aa8409377c59620e531250809"
+    },
+    "hardhat-toolbox-viem": {
+      "source": "NomicFoundation/hardhat-skills",
+      "sourceType": "github",
+      "skillPath": "skills/hardhat-toolbox-viem/SKILL.md",
+      "computedHash": "0edeedef4af58f4a893375957e5fdce2fdb3f0a6b9ddc70abef7ca5b661b0df8"
+    }
+  }
+}
