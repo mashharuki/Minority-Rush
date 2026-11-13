@@ -109,7 +109,14 @@ export async function handleSponsorRequest(req: SponsorRequest, deps: Deps): Pro
   if (!isSponsored && !PASS_THROUGH.has(rpc.method)) return fail(403, rpc.id, 'method not allowed', headers)
   const problem = isSponsored ? checkSponsored(rpc, deps.config) : null
   if (problem) {
-    console.warn('sponsor request rejected', { method: rpc.method, reason: problem })
+    // Public diagnostics only: param types and the entry point address (never the user operation contents).
+    const entryPoint = rpc.params[1]
+    console.warn('sponsor request rejected', {
+      method: rpc.method,
+      reason: problem,
+      paramTypes: rpc.params.map((p) => (Array.isArray(p) ? 'array' : typeof p)),
+      entryPoint: typeof entryPoint === 'string' ? entryPoint : null,
+    })
     return fail(403, rpc.id, problem, headers)
   }
 
