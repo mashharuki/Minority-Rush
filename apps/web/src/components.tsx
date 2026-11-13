@@ -102,3 +102,39 @@ export function StakeSlider({ value, onChange }: { value: number; onChange: (sta
     </div>
   )
 }
+
+export function OfflineBanner({ isOffline }: { isOffline: boolean }) {
+  if (!isOffline) return null
+  return (
+    <div className="c--offline" role="status" aria-live="polite">
+      You're offline. Playing needs a connection, so actions are paused.
+    </div>
+  )
+}
+
+export function UpdateBanner({ hasUpdate, isLocked, onUpdate }: { hasUpdate: boolean; isLocked: boolean; onUpdate: () => void }) {
+  if (!hasUpdate) return null
+  return (
+    <div className="c--offline is--update" role="status" aria-live="polite">
+      Update available
+      <button type="button" onClick={onUpdate} disabled={isLocked}>
+        Update
+      </button>
+    </div>
+  )
+}
+
+/** Shown after a completed round, never as a first-visit modal. */
+export function InstallHint({ canInstall, isIosSafari, onInstall }: { canInstall: boolean; isIosSafari: boolean; onInstall: () => void }) {
+  if (canInstall) {
+    return (
+      <button className="c--btn is--secondary c--installBtn" type="button" onClick={onInstall}>
+        Add Minority Rush to your home screen
+      </button>
+    )
+  }
+  if (isIosSafari) {
+    return <p className="c--installNote">Tip: tap Share, then “Add to Home Screen” to install.</p>
+  }
+  return null
+}

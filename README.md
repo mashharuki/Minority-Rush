@@ -44,9 +44,19 @@ bun run deploy:sepolia   # writes apps/web/src/contracts/deployment.sepolia.json
 bun run export:abi
 ```
 
+## PWA cache policy
+
+Only the app shell and fonts are cached (`apps/web/src/sw.ts`). Ethereum RPC, relayer/KMS, wallet traffic and every
+non-GET request go straight to the network, and no decrypted value is stored. Offline, the game is not playable
+(the banner says so and actions are disabled). Updates are applied only when the user taps *Update*.
+
 ## MVP scope and honest gaps
 
 Implemented: contracts, tests, wallet (injected) flow, user decryption of balance/reward, public decryption of the
-winner. **Not yet:** Privy email login, ERC-4337 gasless/paymaster, PWA, Lism CSS, Sepolia deployment and E2E run,
+winner, installable PWA (manifest, icons, service worker, install hint after a round, offline banner that pauses
+actions, prompt-style updates) and an Etherscan verify link on the result screen. **Not yet:** Privy email login,
+ERC-4337 gasless/paymaster, Lism CSS, Sepolia deployment and E2E run,
 `confidentialTransferAndCall` entry (we use operator + `confidentialTransferFrom`). The live client has not been run
-against Sepolia yet; only the mock-FHEVM contract tests and the offline demo UI were exercised.
+against Sepolia yet; only the mock-FHEVM contract tests and the offline demo UI were exercised. The service worker
+builds and passes a syntax check, but could not be exercised at runtime in the dev browser pane (no SW support there);
+check install/offline in Chrome and Safari before shipping.
