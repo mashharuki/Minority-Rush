@@ -82,15 +82,38 @@ async function settle(c: Contracts, roundId: bigint): Promise<boolean> {
   return moonWon as boolean;
 }
 
+/** One player only: exercises encrypted input, user decryption and the cancel/refund path. */
+async function soloRefund(c: Contracts, player: HardhatEthersSigner): Promise<void> {
+  await prepare(c, player);
+  const before = await balanceOf(c, player);
+  await (await c.game.startRound()).wait();
+  const roundId = await c.game.latestRoundId();
+  await enter(c, roundId, player, 0, 3);
+  log(`round ${roundId}: entered alone with a sealed stake (balance ${before} -> ${await balanceOf(c, player)})`);
+
+  await waitForDeadline(c);
+  await (await c.game.closeRound(roundId)).wait();
+  await (await c.game.connect(player).claim(roundId)).wait();
+  const after = await balanceOf(c, player);
+  log(`refunded after cancellation: balance ${after}`);
+  if (after !== before) throw new Error(`Refund mismatch: expected ${before}, got ${after}`);
+  log("OK: solo refund path verified (add PRIVATE_KEY_2 for the full two-player round)");
+}
+
 async function main(): Promise<void> {
   // Scripts on a real network (localhost/Sepolia) must initialize the FHEVM CLI API; the in-process mock does not.
   if (network.name !== "hardhat") await fhevm.initializeCLIApi();
   const signers = await ethers.getSigners();
   const [a, b] = isLocal() ? [signers[1], signers[2]] : [signers[0], signers[1]];
-  if (!a || !b) throw new Error("Need two funded accounts: set PRIVATE_KEY and PRIVATE_KEY_2.");
+  if (!a) throw new Error("Need a funded account: set PRIVATE_KEY.");
 
   const c = await loadContracts();
   log(`network=${network.name} game=${c.gameAddr}`);
+  if (!b) {
+    log("only one account configured (PRIVATE_KEY_2 missing): running the solo refund check");
+    await soloRefund(c, a);
+    return;
+  }
   await prepare(c, a);
   await prepare(c, b);
 

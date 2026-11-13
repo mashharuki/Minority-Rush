@@ -61,6 +61,10 @@ bun --cwd packages/contracts run smoke:sepolia
 Takes ~2–4 minutes (90 s round + relayer encryption/decryption). Keep the output for the demo video. If it fails,
 see Troubleshooting.
 
+With only `PRIVATE_KEY` set it runs a **solo refund check** (one sealed entry, round cancelled for lack of players,
+stake refunded; verified on Sepolia). Add `PRIVATE_KEY_2` to run the full two-player round including the public
+decryption + `finalizeRound` proof.
+
 ## 5. Verify the contracts
 
 ```bash
@@ -68,6 +72,9 @@ cd packages/contracts
 bunx hardhat verify --network sepolia <RushChip address>
 bunx hardhat verify --network sepolia <MinorityRushGame address> <RushChip address> 90
 ```
+
+Sourcify is disabled in `hardhat.config.ts` because the installed `hardhat-verify` calls Sourcify API v1, which has
+been removed (404). Etherscan verification is unaffected.
 
 ## 6. Publish the web app (Vercel)
 

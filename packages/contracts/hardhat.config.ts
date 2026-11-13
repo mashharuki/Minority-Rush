@@ -87,7 +87,8 @@ const config: HardhatUserConfig = {
     },
   },
   sourcify: {
-    enabled: true,
+    // The installed hardhat-verify uses Sourcify API v1, which has been removed (404); Etherscan only for now.
+    enabled: false,
   },
   typechain: {
     outDir: "types",
