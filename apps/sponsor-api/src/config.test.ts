@@ -22,6 +22,12 @@ describe('loadConfig', () => {
     expect(result.ok && result.data.allowedOrigins).toEqual(['http://localhost:5173', 'https://app.example'])
   })
 
+  it('should turn escaped newlines in the verification key into real newlines', () => {
+    const pem = '-----BEGIN PUBLIC KEY-----\\nABC\\n-----END PUBLIC KEY-----'
+    const result = loadConfig({ ...base, PRIVY_VERIFICATION_KEY: pem })
+    expect(result.ok && result.data.privyVerificationKey).toBe('-----BEGIN PUBLIC KEY-----\nABC\n-----END PUBLIC KEY-----')
+  })
+
   it('should list the invalid fields without echoing their values', () => {
     const result = loadConfig({ ...base, PIMLICO_API_KEY: undefined, GAME_ADDRESS: 'nope' })
     expect(result).toMatchObject({ ok: false })

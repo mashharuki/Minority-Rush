@@ -39,7 +39,8 @@ export function loadConfig(env: Record<string, string | undefined>): ConfigResul
     ok: true,
     data: {
       privyAppId: v.PRIVY_APP_ID,
-      privyVerificationKey: v.PRIVY_VERIFICATION_KEY,
+      // A PEM pasted on one line in .env has literal "\n" sequences instead of real newlines.
+      privyVerificationKey: v.PRIVY_VERIFICATION_KEY.replace(/\\n/g, '\n').trim(),
       pimlicoApiKey: v.PIMLICO_API_KEY,
       policyId: v.PIMLICO_SPONSORSHIP_POLICY_ID,
       // An Origin header never has a trailing slash, so tolerate one in the setting.

@@ -47,8 +47,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             verification_key: config.privyVerificationKey,
           })
           return { userId: claims.user_id }
-        } catch {
-          return null // invalid/expired token: rejected as 401, token never logged
+        } catch (error) {
+          // Log why (error class + message from the verifier), never the token itself.
+          const reason = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown'
+          console.warn('privy token verification failed', { reason })
+          return null
         }
       },
       forward: async (rpc) => {
