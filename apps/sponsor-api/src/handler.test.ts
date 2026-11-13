@@ -73,11 +73,20 @@ describe('handleSponsorRequest', () => {
     expect(res.status).toBe(403)
   })
 
-  it('should rate limit per user', async () => {
-    const send = () => handleSponsorRequest(request(rpc('eth_chainId', [])), deps)
+  it('should rate limit sponsored calls per user', async () => {
+    const body = rpc('pm_getPaymasterData', [goodOp, ENTRY_POINT_V07, '0xaa36a7', {}])
+    const send = () => handleSponsorRequest(request(body), deps)
     expect((await send()).status).toBe(200)
     expect((await send()).status).toBe(200)
     expect((await send()).status).toBe(429)
+  })
+
+  it('should not let read-only polling use up the sponsored allowance', async () => {
+    for (let i = 0; i < 10; i++) {
+      expect((await handleSponsorRequest(request(rpc('eth_getUserOperationReceipt', ['0x01'])), deps)).status).toBe(200)
+    }
+    const sponsored = rpc('pm_getPaymasterData', [goodOp, ENTRY_POINT_V07, '0xaa36a7', {}])
+    expect((await handleSponsorRequest(request(sponsored), deps)).status).toBe(200)
   })
 
   it('should reject methods that are not allowlisted', async () => {

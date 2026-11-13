@@ -1,4 +1,5 @@
-export type RateLimiter = { allow: (key: string) => boolean }
+/** `limit` overrides the default per-minute limit for this call (e.g. a looser one for read-only methods). */
+export type RateLimiter = { allow: (key: string, limit?: number) => boolean }
 
 /**
  * Sliding-window limiter (per key, per minute). In-memory: on serverless it is per instance and best-effort,
@@ -7,10 +8,10 @@ export type RateLimiter = { allow: (key: string) => boolean }
 export function createRateLimiter(limitPerMinute: number, now: () => number = Date.now): RateLimiter {
   const hits = new Map<string, number[]>()
   return {
-    allow(key) {
+    allow(key, limit = limitPerMinute) {
       const cutoff = now() - 60_000
       const recent = (hits.get(key) ?? []).filter((t) => t > cutoff)
-      if (recent.length >= limitPerMinute) {
+      if (recent.length >= limit) {
         hits.set(key, recent)
         return false
       }

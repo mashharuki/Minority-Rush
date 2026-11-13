@@ -11,7 +11,7 @@ const envSchema = z.object({
   ALLOWED_WEB_ORIGIN: z.string().min(1),
   CHIP_ADDRESS: addressSchema,
   GAME_ADDRESS: addressSchema,
-  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
 })
 
 export type SponsorConfig = {

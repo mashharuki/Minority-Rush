@@ -16,6 +16,9 @@ export type Deps = {
   forward: (body: unknown) => Promise<unknown>
 }
 
+/** Read-only calls (gas price, receipt polling) may run this many times more often than sponsored ones. */
+const READ_LIMIT_MULTIPLIER = 10
+
 const rpcSchema = z.object({
   jsonrpc: z.literal('2.0'),
   id: z.union([z.number(), z.string()]),
@@ -99,7 +102,6 @@ export async function handleSponsorRequest(req: SponsorRequest, deps: Deps): Pro
 
   const userId = await authenticate(req, deps)
   if (!userId) return fail(401, null, 'unauthorized', headers)
-  if (!deps.limiter.allow(userId)) return fail(429, null, 'rate limit exceeded', headers)
 
   const parsed = rpcSchema.safeParse(req.body)
   if (!parsed.success) return fail(400, null, 'invalid JSON-RPC request', headers)
@@ -107,6 +109,12 @@ export async function handleSponsorRequest(req: SponsorRequest, deps: Deps): Pro
 
   const isSponsored = USER_OP_METHODS.has(rpc.method) || PAYMASTER_METHODS.has(rpc.method)
   if (!isSponsored && !PASS_THROUGH.has(rpc.method)) return fail(403, rpc.id, 'method not allowed', headers)
+
+  // Sponsored calls cost money: tight limit. Read-only calls (gas price, receipt polling) get a looser one.
+  const allowed = isSponsored
+    ? deps.limiter.allow(`${userId}:sponsor`)
+    : deps.limiter.allow(`${userId}:read`, deps.config.rateLimitPerMinute * READ_LIMIT_MULTIPLIER)
+  if (!allowed) return fail(429, rpc.id, 'rate limit exceeded', headers)
   const problem = isSponsored ? checkSponsored(rpc, deps.config) : null
   if (problem) {
     // Public diagnostics only: param types and the entry point address (never the user operation contents).
