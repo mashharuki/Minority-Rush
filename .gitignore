@@ -25,3 +25,6 @@ pnpm-lock.yaml
 yarn.lock
 
 .claude/logs/*
+
+# Vercel
+.vercel

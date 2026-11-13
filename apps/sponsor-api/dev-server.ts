@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 
-import handler from './api/sponsor'
+import handler from './api/sponsor.js'
 
 /**
  * Local stand-in for the Vercel function: `bun run dev` serves POST /api/sponsor on :8787.
