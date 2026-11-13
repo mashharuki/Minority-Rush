@@ -37,6 +37,8 @@ bun run test            # 14 contract tests on the mock FHEVM
 bun run dev             # web app; runs an offline demo until contracts are deployed
 ```
 
+Full step-by-step (keys, deploy, smoke test, verification, checklist): [docs/deployment.md](docs/deployment.md).
+
 Deploy to Sepolia (needs `PRIVATE_KEY`, `INFURA_API_KEY` via `.env` or `npx hardhat vars set`):
 
 ```bash

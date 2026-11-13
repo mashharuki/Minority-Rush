@@ -23,13 +23,16 @@ function getConfigValue(name: string, fallback: string): string {
 
 // Public test mnemonic: the in-process `hardhat` network needs several funded signers (deployer/alice/bob in tests).
 const HARDHAT_TEST_MNEMONIC = "test test test test test test test test test test test junk";
-// Default is the well-known public key of account #0 of the mnemonic above. Never use it with real funds.
-const PRIVATE_KEY: string = getConfigValue(
-  "PRIVATE_KEY",
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-);
+// Fallback is the well-known public dev key of account #0 of the mnemonic above. Never use it with real funds:
+// remote networks only get accounts when a different key is supplied.
+const PUBLIC_DEV_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const PRIVATE_KEY: string = getConfigValue("PRIVATE_KEY", PUBLIC_DEV_KEY);
+// Optional second funded key: the Sepolia smoke test needs two players.
+const PRIVATE_KEY_2: string = getConfigValue("PRIVATE_KEY_2", "");
+const REMOTE_ACCOUNTS: string[] = PRIVATE_KEY === PUBLIC_DEV_KEY ? [] : [PRIVATE_KEY, PRIVATE_KEY_2].filter(Boolean);
 const INFURA_API_KEY: string = getConfigValue("INFURA_API_KEY", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
 const ETHERSCAN_API_KEY: string = getConfigValue("ETHERSCAN_API_KEY", "");
+const SEPOLIA_RPC_URL: string = getConfigValue("SEPOLIA_RPC_URL", `https://sepolia.infura.io/v3/${INFURA_API_KEY}`);
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
@@ -50,14 +53,14 @@ const config: HardhatUserConfig = {
       chainId: 31337,
     },
     anvil: {
-      accounts: [PRIVATE_KEY],
+      accounts: [PUBLIC_DEV_KEY],
       chainId: 31337,
       url: "http://localhost:8545",
     },
     sepolia: {
-      accounts: [PRIVATE_KEY],
+      accounts: REMOTE_ACCOUNTS,
       chainId: 11155111,
-      url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
+      url: SEPOLIA_RPC_URL,
     },
   },
   paths: {
@@ -84,7 +87,8 @@ const config: HardhatUserConfig = {
     },
   },
   sourcify: {
-    enabled: true,
+    // The installed hardhat-verify uses Sourcify API v1, which has been removed (404); Etherscan only for now.
+    enabled: false,
   },
   typechain: {
     outDir: "types",

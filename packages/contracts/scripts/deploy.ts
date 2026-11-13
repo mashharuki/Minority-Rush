@@ -7,6 +7,13 @@ const ROUND_DURATION_SECONDS = 90;
 
 async function main(): Promise<void> {
   const [deployer] = await ethers.getSigners();
+  if (!deployer) {
+    throw new Error("No deployer account. Set PRIVATE_KEY (not the public Hardhat dev key) in .env or `hardhat vars`.");
+  }
+  const balance = await ethers.provider.getBalance(deployer.address);
+  if (network.name === "sepolia" && balance === 0n) {
+    throw new Error(`Deployer ${deployer.address} has no Sepolia ETH. Fund it from a faucet first.`);
+  }
   console.log(`Deploying with ${deployer.address} on ${network.name}`);
 
   const chip = await (await ethers.getContractFactory("RushChip")).deploy();
