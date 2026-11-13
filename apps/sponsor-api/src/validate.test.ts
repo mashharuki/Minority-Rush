@@ -1,7 +1,14 @@
 import { encodeFunctionData, parseAbi, type Hex } from 'viem'
 import { describe, expect, it } from 'vitest'
 
-import { MAX_CALLS, SIMPLE_ACCOUNT_FACTORY_V07, validateUserOp, type Allowlist, type Call } from './validate'
+import {
+  ENTRY_POINT_V07,
+  MAX_CALLS,
+  SIMPLE_ACCOUNT_FACTORY_V07,
+  validateUserOp,
+  type Allowlist,
+  type Call,
+} from './validate'
 
 const CHIP = '0x011B6b4b58738a93D123d129Ee7E1a5B0B1A50F2' as const
 const GAME = '0x0B12A3748f8E97F01ab9c077b5c39d97Df28aBA6' as const
@@ -37,6 +44,14 @@ function callData(calls: Call[]): Hex {
 
 const faucet = call(CHIP, encodeFunctionData({ abi: chipAbi, functionName: 'faucet' }))
 const op = (calls: Call[], extra: object = {}) => ({ sender: SENDER, callData: callData(calls), ...extra })
+
+describe('constants', () => {
+  it('should use the canonical EntryPoint v0.7 and SimpleAccount v0.7 factory addresses', () => {
+    // Regression: a mistyped EntryPoint made the sponsor API reject every real request.
+    expect(ENTRY_POINT_V07).toBe('0x0000000071727De22E5E9d8BAf0edAc6f37da032')
+    expect(SIMPLE_ACCOUNT_FACTORY_V07).toBe('0x91E60e0613810449d098b0b5Ec8b51A0FE8c8985')
+  })
+})
 
 describe('validateUserOp', () => {
   it('should accept a single allowed call', () => {

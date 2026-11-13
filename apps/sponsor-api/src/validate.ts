@@ -1,9 +1,10 @@
 import { decodeFunctionData, getAddress, parseAbi, toFunctionSelector, type Hex } from 'viem'
+import { entryPoint07Address } from 'viem/account-abstraction'
 
 export const SEPOLIA_CHAIN_ID = 11155111
-/** ERC-4337 EntryPoint v0.7. */
-export const ENTRY_POINT_V07 = '0x0000000071727De22E5E9d8BAf0e10E02B8F8F6d'
-/** permissionless.js SimpleAccountFactory for EntryPoint v0.7. */
+/** ERC-4337 EntryPoint v0.7 (taken from viem so the address is never hand-typed). */
+export const ENTRY_POINT_V07 = entryPoint07Address
+/** permissionless.js default SimpleAccountFactory for EntryPoint v0.7 (see toSimpleSmartAccount.ts). */
 export const SIMPLE_ACCOUNT_FACTORY_V07 = '0x91E60e0613810449d098b0b5Ec8b51A0FE8c8985'
 
 export const MAX_CALLS = 4
