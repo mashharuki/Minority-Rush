@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minority Rush — UI mockup</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><circle cx=%2232%22 cy=%2232%22 r=%2226%22 fill=%22%23f99a57%22/><path d=%22M41 12a23 23 0 1 0 11 36A21 21 0 0 1 41 12Z%22 fill=%22%237775ef%22/></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://cdn.jsdelivr.net/npm/lism-css@1.1.0/dist/css/main.css" rel="stylesheet" />
+    <style>
+      @layer lism-custom {
+        :root {
+          --paper: #f1eddf;
+          --paper-deep: #e5dfce;
+          --ink: #21233d;
+          --night: #171b3d;
+          --night-soft: #242950;
+          --moon: #7775ef;
+          --moon-soft: #b9b8ff;
+          --sun: #f99a57;
+          --sun-soft: #ffc99f;
+          --mint: #72dbbe;
+          --red: #ee6f68;
+          --line: rgba(33, 35, 61, 0.14);
+          --white-line: rgba(255, 255, 255, 0.15);
+          --display: "Syne", sans-serif;
+          --body: "DM Sans", sans-serif;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        body {
+          min-width: 320px;
+          margin: 0;
+          color: var(--ink);
+          background:
+            linear-gradient(90deg, rgba(33, 35, 61, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
+            linear-gradient(rgba(33, 35, 61, 0.035) 1px, transparent 1px) 0 0 / 24px 24px,
+            var(--paper);
+          font-family: var(--body);
+        }
+
+        button,
+        input {
+          font: inherit;
+        }
+
+        button {
+          color: inherit;
+        }
+
+        .c--canvas {
+          min-height: 100svh;
+          display: grid;
+          grid-template-columns: minmax(300px, 0.72fr) minmax(410px, 1fr) minmax(270px, 0.64fr);
+          gap: clamp(24px, 4vw, 72px);
+          align-items: center;
+          padding: clamp(24px, 5vw, 72px);
+          overflow: hidden;
+        }
+
+        .c--brief {
+          align-self: stretch;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          max-height: 850px;
+          padding-block: 12px;
+        }
+
+        .c--kicker {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          width: fit-content;
+          font-weight: 700;
+          font-size: 0.76rem;
+          letter-spacing: 0.04em;
+        }
+
+        .c--kicker::before {
+          content: "";
+          width: 28px;
+          height: 2px;
+          background: var(--ink);
+        }
+
+        .c--brief h1 {
+          max-width: 8ch;
+          margin: 22px 0 18px;
+          font-family: var(--display);
+          font-size: clamp(3rem, 6vw, 6.8rem);
+          font-weight: 600;
+          line-height: 0.83;
+          letter-spacing: -0.07em;
+        }
+
+        .c--briefCopy {
+          max-width: 34ch;
+          margin: 0;
+          color: rgba(33, 35, 61, 0.7);
+          font-size: clamp(0.95rem, 1.2vw, 1.12rem);
+          line-height: 1.6;
+        }
+
+        .c--legend {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1px;
+          margin-top: 44px;
+          border: 1px solid var(--line);
+          background: var(--line);
+        }
+
+        .c--legendItem {
+          min-height: 96px;
+          padding: 18px;
+          background: var(--paper);
+        }
+
+        .c--legendItem strong {
+          display: block;
+          margin-bottom: 18px;
+          font-family: var(--display);
+          font-size: 1.4rem;
+        }
+
+        .c--legendItem span {
+          color: rgba(33, 35, 61, 0.6);
+          font-size: 0.78rem;
+        }
+
+        .c--privacyNote {
+          max-width: 34ch;
+          margin: 36px 0 0;
+          font-size: 0.75rem;
+          line-height: 1.55;
+          color: rgba(33, 35, 61, 0.5);
+        }
+
+        .c--phoneStage {
+          position: relative;
+          display: grid;
+          place-items: center;
+          min-height: 850px;
+        }
+
+        .c--orbitBack {
+          position: absolute;
+          width: min(640px, 92%);
+          aspect-ratio: 1;
+          border: 1px solid rgba(33, 35, 61, 0.12);
+          border-radius: 50%;
+        }
+
+        .c--orbitBack::before,
+        .c--orbitBack::after {
+          content: "";
+          position: absolute;
+          inset: 12%;
+          border: inherit;
+          border-radius: inherit;
+        }
+
+        .c--orbitBack::after {
+          inset: 29%;
+        }
+
+        .c--phone {
+          position: relative;
+          z-index: 2;
+          width: min(390px, calc(100vw - 32px));
+          height: min(844px, calc(100svh - 32px));
+          min-height: 690px;
+          overflow: hidden;
+          border: 9px solid var(--ink);
+          border-radius: 42px;
+          background: var(--night);
+          box-shadow:
+            0 32px 80px rgba(33, 35, 61, 0.22),
+            0 4px 0 var(--ink);
+        }
+
+        .c--phone::before {
+          content: "";
+          position: absolute;
+          z-index: 20;
+          top: 8px;
+          left: 50%;
+          width: 92px;
+          height: 24px;
+          transform: translateX(-50%);
+          border-radius: 99px;
+          background: #0b0e21;
+        }
+
+        .c--screen {
+          position: absolute;
+          inset: 0;
+          display: none;
+          overflow: hidden auto;
+          background: var(--night);
+          color: #fff;
+          scrollbar-width: none;
+        }
+
+        .c--screen::-webkit-scrollbar {
+          display: none;
+        }
+
+        .c--screen.is--active {
+          display: flex;
+          flex-direction: column;
+          animation: screen-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes screen-in {
+          from {
+            opacity: 0;
+            transform: translateX(12px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .c--statusBar {
+          position: relative;
+          z-index: 6;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 48px;
+          padding: 12px 22px 0;
+          font-size: 0.7rem;
+          font-weight: 600;
+        }
+
+        .c--statusIcons {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .c--signal {
+          display: flex;
+          align-items: end;
+          gap: 1.5px;
+          height: 10px;
+        }
+
+        .c--signal i {
+          display: block;
+          width: 2px;
+          background: currentColor;
+          border-radius: 2px;
+        }
+
+        .c--signal i:nth-child(1) {
+          height: 3px;
+        }
+        .c--signal i:nth-child(2) {
+          height: 5px;
+        }
+        .c--signal i:nth-child(3) {
+          height: 7px;
+        }
+        .c--signal i:nth-child(4) {
+          height: 9px;
+        }
+
+        .c--battery {
+          width: 18px;
+          height: 9px;
+          padding: 1px;
+          border: 1px solid currentColor;
+          border-radius: 2px;
+        }
+
+        .c--battery::after {
+          content: "";
+          display: block;
+          width: 75%;
+          height: 100%;
+          background: currentColor;
+        }
+
+        .c--appBar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 60px;
+          padding: 4px 20px 12px;
+        }
+
+        .c--wordmark {
+          font-family: var(--display);
+          font-size: 0.92rem;
+          font-weight: 700;
+          letter-spacing: -0.035em;
+        }
+
+        .c--roundPill,
+        .c--balancePill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 10px;
+          border: 1px solid var(--white-line);
+          border-radius: 99px;
+          font-size: 0.67rem;
+          color: rgba(255, 255, 255, 0.74);
+        }
+
+        .c--roundPill i,
+        .c--balancePill i {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--mint);
+          box-shadow: 0 0 0 4px rgba(114, 219, 190, 0.12);
+        }
+
+        .c--content {
+          position: relative;
+          z-index: 2;
+          flex: 1;
+          padding: 18px 20px 24px;
+        }
+
+        .c--btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          min-height: 52px;
+          padding: 12px 18px;
+          border: 0;
+          border-radius: 16px;
+          background: var(--sun);
+          color: var(--ink);
+          font-weight: 700;
+          cursor: pointer;
+          transition:
+            transform 130ms ease,
+            filter 130ms ease;
+        }
+
+        .c--btn:hover {
+          filter: brightness(1.05);
+        }
+
+        .c--btn:active {
+          transform: translateY(2px);
+        }
+
+        .c--btn:focus-visible,
+        .c--choice:focus-visible,
+        .c--stageBtn:focus-visible,
+        .c--textInput:focus-visible {
+          outline: 3px solid var(--mint);
+          outline-offset: 3px;
+        }
+
+        .c--btn.is--secondary {
+          border: 1px solid var(--white-line);
+          background: transparent;
+          color: #fff;
+        }
+
+        .c--btn.is--moon {
+          background: var(--moon-soft);
+        }
+
+        .c--login {
+          background: var(--paper);
+          color: var(--ink);
+        }
+
+        .c--login .c--statusBar,
+        .c--login .c--appBar {
+          color: var(--ink);
+        }
+
+        .c--login .c--wordmark {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .c--brandMark {
+          position: relative;
+          width: 22px;
+          height: 22px;
+          border: 2px solid var(--ink);
+          border-radius: 50%;
+        }
+
+        .c--brandMark::after {
+          content: "";
+          position: absolute;
+          inset: 4px -5px 4px 9px;
+          border-radius: 50%;
+          background: var(--sun);
+        }
+
+        .c--loginHero {
+          position: relative;
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 34px 24px 26px;
+        }
+
+        .c--loginHero::before {
+          content: "";
+          position: absolute;
+          top: -120px;
+          right: -130px;
+          width: 330px;
+          height: 330px;
+          border: 1px solid rgba(33, 35, 61, 0.12);
+          border-radius: 50%;
+          box-shadow:
+            0 0 0 38px rgba(33, 35, 61, 0.035),
+            0 0 0 78px rgba(33, 35, 61, 0.025);
+        }
+
+        .c--loginTitle {
+          position: relative;
+          z-index: 1;
+          max-width: 8ch;
+          margin: 0;
+          font-family: var(--display);
+          font-size: clamp(3.55rem, 11vw, 4.75rem);
+          line-height: 0.84;
+          letter-spacing: -0.075em;
+        }
+
+        .c--loginTitle span {
+          display: block;
+          margin-left: 0.6em;
+          color: var(--moon);
+        }
+
+        .c--loginCopy {
+          max-width: 24ch;
+          margin: 24px 0 0;
+          color: rgba(33, 35, 61, 0.64);
+          line-height: 1.5;
+        }
+
+        .c--loginForm {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          gap: 10px;
+        }
+
+        .c--fieldLabel {
+          font-size: 0.74rem;
+          font-weight: 600;
+        }
+
+        .c--textInput {
+          width: 100%;
+          min-height: 52px;
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          padding: 0 16px;
+          background: rgba(255, 255, 255, 0.45);
+          color: var(--ink);
+        }
+
+        .c--textInput::placeholder {
+          color: rgba(33, 35, 61, 0.38);
+        }
+
+        .c--trustLine {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          margin-top: 4px;
+          color: rgba(33, 35, 61, 0.5);
+          font-size: 0.66rem;
+        }
+
+        .c--trustLine svg {
+          width: 12px;
+        }
+
+        .c--setup {
+          background: var(--moon-soft);
+          color: var(--ink);
+        }
+
+        .c--setup .c--statusBar,
+        .c--setup .c--appBar {
+          color: var(--ink);
+        }
+
+        .c--setupBody {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 18px 24px 26px;
+        }
+
+        .c--setupSeal {
+          position: relative;
+          width: 224px;
+          height: 224px;
+          margin: 22px auto 28px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(33, 35, 61, 0.18);
+          border-radius: 50%;
+        }
+
+        .c--setupSeal::before,
+        .c--setupSeal::after {
+          content: "";
+          position: absolute;
+          border-radius: 50%;
+        }
+
+        .c--setupSeal::before {
+          inset: 20px;
+          border: 18px solid var(--ink);
+          border-right-color: var(--sun);
+          transform: rotate(-35deg);
+        }
+
+        .c--setupSeal::after {
+          width: 24px;
+          height: 24px;
+          background: var(--mint);
+          box-shadow: 0 0 0 9px rgba(114, 219, 190, 0.3);
+        }
+
+        .c--setup h2,
+        .c--sealed h2,
+        .c--reveal h2 {
+          margin: 0;
+          font-family: var(--display);
+          font-size: 2.2rem;
+          line-height: 0.98;
+          letter-spacing: -0.055em;
+        }
+
+        .c--setupLead {
+          max-width: 26ch;
+          margin: 12px 0 26px;
+          color: rgba(33, 35, 61, 0.62);
+          line-height: 1.5;
+        }
+
+        .c--accountStack {
+          display: grid;
+          gap: 8px;
+          margin-bottom: 20px;
+        }
+
+        .c--accountRow {
+          display: grid;
+          grid-template-columns: 32px 1fr auto;
+          gap: 10px;
+          align-items: center;
+          min-height: 54px;
+          padding: 8px 12px;
+          border-bottom: 1px solid rgba(33, 35, 61, 0.15);
+        }
+
+        .c--accountIcon {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: var(--ink);
+          color: #fff;
+          font-size: 0.7rem;
+          font-weight: 700;
+        }
+
+        .c--accountRow strong {
+          display: block;
+          font-size: 0.78rem;
+        }
+
+        .c--accountRow small {
+          color: rgba(33, 35, 61, 0.54);
+          font-size: 0.66rem;
+        }
+
+        .c--check {
+          color: #167b65;
+          font-weight: 700;
+          font-size: 0.72rem;
+        }
+
+        .c--gameHeader {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: start;
+          gap: 12px;
+        }
+
+        .c--gameHeader h2 {
+          margin: 0;
+          font-family: var(--display);
+          font-size: 2.25rem;
+          line-height: 0.92;
+          letter-spacing: -0.055em;
+        }
+
+        .c--gameHeader p {
+          margin: 8px 0 0;
+          color: rgba(255, 255, 255, 0.56);
+          font-size: 0.77rem;
+        }
+
+        .c--timer {
+          display: grid;
+          place-items: center;
+          width: 54px;
+          height: 54px;
+          border: 5px solid var(--night-soft);
+          border-top-color: var(--sun);
+          border-radius: 50%;
+          font-family: var(--display);
+          font-size: 0.82rem;
+          transform: rotate(20deg);
+        }
+
+        .c--timer span {
+          transform: rotate(-20deg);
+        }
+
+        .c--choices {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 26px;
+        }
+
+        .c--choice {
+          position: relative;
+          min-height: 224px;
+          overflow: hidden;
+          border: 1px solid var(--white-line);
+          border-radius: 22px 22px 8px 22px;
+          padding: 18px;
+          text-align: left;
+          cursor: pointer;
+          background: transparent;
+          color: #fff;
+        }
+
+        .c--choice:nth-child(2) {
+          border-radius: 22px 22px 22px 8px;
+        }
+
+        .c--choice::after {
+          content: "";
+          position: absolute;
+          right: -52px;
+          bottom: -48px;
+          width: 154px;
+          height: 154px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          border-radius: 50%;
+          box-shadow: 0 0 0 18px rgba(255, 255, 255, 0.04);
+        }
+
+        .c--choice.is--selected {
+          border-color: transparent;
+          color: var(--ink);
+        }
+
+        .c--choice.is--sun.is--selected {
+          background: var(--sun);
+        }
+
+        .c--choice.is--moon.is--selected {
+          background: var(--moon-soft);
+        }
+
+        .c--choiceIcon {
+          display: grid;
+          place-items: center;
+          width: 52px;
+          height: 52px;
+          border: 1px solid currentColor;
+          border-radius: 50%;
+        }
+
+        .c--choiceIcon svg {
+          width: 27px;
+          height: 27px;
+        }
+
+        .c--choiceName {
+          position: absolute;
+          left: 18px;
+          bottom: 44px;
+          font-family: var(--display);
+          font-size: 2rem;
+          font-weight: 600;
+          letter-spacing: -0.06em;
+        }
+
+        .c--choiceHint {
+          position: absolute;
+          left: 18px;
+          bottom: 20px;
+          color: currentColor;
+          opacity: 0.58;
+          font-size: 0.65rem;
+        }
+
+        .c--stakeBox {
+          margin-top: 18px;
+          padding-top: 16px;
+          border-top: 1px solid var(--white-line);
+        }
+
+        .c--stakeTop {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+        }
+
+        .c--stakeTop label {
+          color: rgba(255, 255, 255, 0.58);
+          font-size: 0.72rem;
+        }
+
+        .c--stakeValue {
+          font-family: var(--display);
+          font-size: 1.4rem;
+        }
+
+        .c--range {
+          width: 100%;
+          margin: 16px 0 10px;
+          accent-color: var(--sun);
+        }
+
+        .c--stakeScale {
+          display: flex;
+          justify-content: space-between;
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.62rem;
+        }
+
+        .c--sealBtn {
+          margin-top: 20px;
+        }
+
+        .c--gasless {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          margin-top: 10px;
+          color: rgba(255, 255, 255, 0.48);
+          font-size: 0.64rem;
+        }
+
+        .c--gasless i {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--mint);
+        }
+
+        .c--sealed {
+          background: #1d2146;
+        }
+
+        .c--sealedBody {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          padding: 22px 24px 26px;
+          text-align: center;
+        }
+
+        .c--sealRing {
+          position: relative;
+          display: grid;
+          place-items: center;
+          width: 250px;
+          height: 250px;
+          margin-top: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.13);
+          border-radius: 50%;
+          box-shadow:
+            0 0 0 20px rgba(119, 117, 239, 0.06),
+            0 0 0 48px rgba(119, 117, 239, 0.035);
+        }
+
+        .c--sealRing::before {
+          content: "";
+          position: absolute;
+          inset: 20px;
+          border: 24px solid var(--moon);
+          border-top-color: var(--sun);
+          border-radius: 50%;
+          animation: seal-turn 5s linear infinite;
+        }
+
+        @keyframes seal-turn {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .c--lock {
+          position: relative;
+          z-index: 2;
+          width: 40px;
+          height: 34px;
+          border: 3px solid #fff;
+          border-radius: 9px;
+        }
+
+        .c--lock::before {
+          content: "";
+          position: absolute;
+          left: 50%;
+          bottom: 28px;
+          width: 22px;
+          height: 22px;
+          transform: translateX(-50%);
+          border: 3px solid #fff;
+          border-bottom: 0;
+          border-radius: 14px 14px 0 0;
+        }
+
+        .c--sealedLead {
+          max-width: 25ch;
+          margin: 12px auto 0;
+          color: rgba(255, 255, 255, 0.58);
+          line-height: 1.5;
+        }
+
+        .c--hashSlip {
+          width: 100%;
+          margin-top: 20px;
+          padding: 15px 16px;
+          border: 1px dashed rgba(255, 255, 255, 0.22);
+          border-radius: 10px;
+          text-align: left;
+        }
+
+        .c--hashSlip span {
+          display: block;
+          color: rgba(255, 255, 255, 0.44);
+          font-size: 0.62rem;
+        }
+
+        .c--hashSlip code {
+          display: block;
+          overflow: hidden;
+          margin-top: 6px;
+          color: var(--moon-soft);
+          font-size: 0.7rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .c--players {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 18px 0;
+        }
+
+        .c--avatar {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          margin-left: -7px;
+          border: 3px solid #1d2146;
+          border-radius: 50%;
+          background: var(--paper);
+          color: var(--ink);
+          font-size: 0.62rem;
+          font-weight: 700;
+        }
+
+        .c--avatar:first-child {
+          margin-left: 0;
+          background: var(--sun-soft);
+        }
+
+        .c--avatar:nth-child(2) {
+          background: var(--moon-soft);
+        }
+        .c--avatar:nth-child(3) {
+          background: var(--mint);
+        }
+
+        .c--reveal {
+          background: var(--sun-soft);
+          color: var(--ink);
+        }
+
+        .c--reveal .c--statusBar,
+        .c--reveal .c--appBar {
+          color: var(--ink);
+        }
+
+        .c--revealBody {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 12px 24px 26px;
+        }
+
+        .c--winnerWord {
+          position: relative;
+          margin: 8px 0 0;
+          font-family: var(--display);
+          font-size: clamp(5.4rem, 25vw, 7rem);
+          line-height: 0.76;
+          letter-spacing: -0.095em;
+        }
+
+        .c--winnerWord::after {
+          content: "";
+          position: absolute;
+          right: 0;
+          bottom: -34px;
+          width: 100px;
+          height: 100px;
+          border: 19px solid var(--ink);
+          border-right-color: transparent;
+          border-radius: 50%;
+          transform: rotate(35deg);
+        }
+
+        .c--winLabel {
+          margin-top: 58px;
+          font-weight: 700;
+          font-size: 0.78rem;
+        }
+
+        .c--reward {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: end;
+          gap: 16px;
+          margin-top: 12px;
+          padding-block: 18px;
+          border-block: 1px solid rgba(33, 35, 61, 0.17);
+        }
+
+        .c--reward span {
+          display: block;
+          color: rgba(33, 35, 61, 0.58);
+          font-size: 0.7rem;
+        }
+
+        .c--reward strong {
+          font-family: var(--display);
+          font-size: 2.8rem;
+          line-height: 1;
+          letter-spacing: -0.06em;
+        }
+
+        .c--rewardBadge {
+          padding: 8px 10px;
+          border-radius: 99px;
+          background: var(--mint);
+          font-size: 0.68rem;
+          font-weight: 700;
+        }
+
+        .c--proofRow {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin: 18px 0 22px;
+          color: rgba(33, 35, 61, 0.62);
+          font-size: 0.7rem;
+        }
+
+        .c--proofRow i {
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: var(--ink);
+          color: #fff;
+          font-style: normal;
+        }
+
+        .c--review {
+          align-self: stretch;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          max-height: 850px;
+        }
+
+        .c--review h2 {
+          margin: 0 0 8px;
+          font-family: var(--display);
+          font-size: 1.15rem;
+          letter-spacing: -0.035em;
+        }
+
+        .c--reviewIntro {
+          margin: 0 0 28px;
+          color: rgba(33, 35, 61, 0.56);
+          font-size: 0.8rem;
+          line-height: 1.5;
+        }
+
+        .c--stageNav {
+          display: grid;
+          border-top: 1px solid var(--line);
+        }
+
+        .c--stageBtn {
+          position: relative;
+          display: grid;
+          grid-template-columns: 30px 1fr auto;
+          align-items: center;
+          gap: 10px;
+          min-height: 68px;
+          padding: 0 4px;
+          border: 0;
+          border-bottom: 1px solid var(--line);
+          background: transparent;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .c--stageBtn::after {
+          content: "";
+          width: 8px;
+          height: 8px;
+          border: 1px solid rgba(33, 35, 61, 0.3);
+          border-radius: 50%;
+        }
+
+        .c--stageBtn.is--active::after {
+          border-color: var(--ink);
+          background: var(--sun);
+          box-shadow: 0 0 0 5px rgba(249, 154, 87, 0.2);
+        }
+
+        .c--stageNum {
+          color: rgba(33, 35, 61, 0.38);
+          font-family: var(--display);
+          font-size: 0.76rem;
+        }
+
+        .c--stageBtn strong {
+          display: block;
+          font-size: 0.84rem;
+        }
+
+        .c--stageBtn span:last-of-type {
+          display: block;
+          margin-top: 2px;
+          color: rgba(33, 35, 61, 0.48);
+          font-size: 0.68rem;
+        }
+
+        .c--reviewFoot {
+          margin-top: 30px;
+          padding: 16px;
+          border-left: 3px solid var(--moon);
+          background: rgba(255, 255, 255, 0.35);
+          font-size: 0.72rem;
+          line-height: 1.55;
+        }
+
+        .c--reviewFoot strong {
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        @media (max-width: 1080px) {
+          .c--canvas {
+            grid-template-columns: minmax(390px, 1fr) 280px;
+          }
+
+          .c--brief {
+            display: none;
+          }
+        }
+
+        @media (max-width: 760px) {
+          body {
+            background: var(--night);
+          }
+
+          .c--canvas {
+            display: block;
+            min-height: 100svh;
+            padding: 0;
+          }
+
+          .c--phoneStage {
+            display: block;
+            min-height: 100svh;
+          }
+
+          .c--orbitBack,
+          .c--review {
+            display: none;
+          }
+
+          .c--phone {
+            width: 100%;
+            height: 100svh;
+            min-height: 640px;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            scroll-behavior: auto !important;
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="c--canvas">
+      <section class="c--brief" aria-label="Design direction">
+        <div>
+          <span class="c--kicker">Interactive UI mockup</span>
+          <h1>Read the room. Quietly.</h1>
+          <p class="c--briefCopy">
+            A one-tap social game where every choice and stake stays sealed until the crowd has spoken.
+          </p>
+          <div class="c--legend" aria-label="Core game concepts">
+            <div class="c--legendItem">
+              <strong>2 sides</strong>
+              <span>Sun or Moon</span>
+            </div>
+            <div class="c--legendItem">
+              <strong>1 secret</strong>
+              <span>Your encrypted stake</span>
+            </div>
+          </div>
+        </div>
+        <p class="c--privacyNote">
+          Email login creates a private wallet. Gas is sponsored. Your choice, stake, and balance never appear in
+          plaintext onchain.
+        </p>
+      </section>
+
+      <section class="c--phoneStage" aria-label="Mobile application preview">
+        <div class="c--orbitBack" aria-hidden="true"></div>
+        <div class="c--phone">
+          <section class="c--screen c--login is--active" data-screen="login">
+            <div class="c--statusBar">
+              <span>9:41</span>
+              <span class="c--statusIcons">
+                <span class="c--signal"><i></i><i></i><i></i><i></i></span>
+                <span>5G</span>
+                <span class="c--battery"></span>
+              </span>
+            </div>
+            <header class="c--appBar">
+              <div class="c--wordmark"><i class="c--brandMark"></i> Minority Rush</div>
+              <span style="font-size: 0.68rem; color: rgba(33, 35, 61, 0.5)">How it works</span>
+            </header>
+            <div class="c--loginHero">
+              <div>
+                <h2 class="c--loginTitle">Stay <span>unread.</span></h2>
+                <p class="c--loginCopy">Choose a side. Set a secret stake. Win by thinking unlike the crowd.</p>
+              </div>
+              <form class="c--loginForm" id="login-form">
+                <label class="c--fieldLabel" for="email">Play with email</label>
+                <input
+                  class="c--textInput"
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value="player@example.com"
+                />
+                <button class="c--btn" type="submit">Send my login code</button>
+                <button class="c--btn is--secondary" type="button" style="color: var(--ink); border-color: var(--line)">
+                  Use a wallet instead
+                </button>
+                <span class="c--trustLine">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 10V7a5 5 0 0 1 10 0v3" />
+                    <rect x="4" y="10" width="16" height="11" rx="2" />
+                  </svg>
+                  Private wallet created by Privy · No seed phrase
+                </span>
+              </form>
+            </div>
+          </section>
+
+          <section class="c--screen c--setup" data-screen="setup">
+            <div class="c--statusBar"><span>9:41</span><span>5G ▰</span></div>
+            <header class="c--appBar">
+              <div class="c--wordmark">Minority Rush</div>
+              <span style="font-size: 0.7rem">player@•••</span>
+            </header>
+            <div class="c--setupBody">
+              <div>
+                <div class="c--setupSeal"><span class="sr-only">Secure account ready</span></div>
+                <h2>Your private player is ready.</h2>
+                <p class="c--setupLead">
+                  No ETH needed. Your moves are signed by your wallet and sponsored by the game.
+                </p>
+                <div class="c--accountStack">
+                  <div class="c--accountRow">
+                    <span class="c--accountIcon">P</span>
+                    <span><strong>Private wallet</strong><small>0x71A2…03F9</small></span>
+                    <span class="c--check">Ready</span>
+                  </div>
+                  <div class="c--accountRow">
+                    <span class="c--accountIcon">S</span>
+                    <span><strong>Game account</strong><small>Gas sponsored</small></span>
+                    <span class="c--check">Ready</span>
+                  </div>
+                  <div class="c--accountRow">
+                    <span class="c--accountIcon">R</span>
+                    <span><strong>Starter chips</strong><small>Private balance</small></span>
+                    <span class="c--check">20 RUSH</span>
+                  </div>
+                </div>
+              </div>
+              <button class="c--btn" type="button" data-next="pick">Enter the next round</button>
+            </div>
+          </section>
+
+          <section class="c--screen" data-screen="pick">
+            <div class="c--statusBar"><span>9:42</span><span>5G ▰</span></div>
+            <header class="c--appBar">
+              <div class="c--wordmark">Minority Rush</div>
+              <span class="c--balancePill"><i></i> 20 private chips</span>
+            </header>
+            <div class="c--content">
+              <div class="c--gameHeader">
+                <div>
+                  <span class="c--roundPill"><i></i> Round 018 · 6 joined</span>
+                  <h2 style="margin-top: 16px">Which side stays small?</h2>
+                  <p>Both the choice and stake stay encrypted.</p>
+                </div>
+                <div class="c--timer" aria-label="32 seconds remaining"><span>32</span></div>
+              </div>
+
+              <div class="c--choices" role="group" aria-label="Choose a side">
+                <button class="c--choice is--sun is--selected" type="button" data-choice="sun" aria-pressed="true">
+                  <span class="c--choiceIcon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <circle cx="12" cy="12" r="4" />
+                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+                    </svg>
+                  </span>
+                  <span class="c--choiceName">Sun</span>
+                  <span class="c--choiceHint">Warm instinct</span>
+                </button>
+                <button class="c--choice is--moon" type="button" data-choice="moon" aria-pressed="false">
+                  <span class="c--choiceIcon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                      <path d="M20 15.4A8.5 8.5 0 0 1 8.6 4 8.5 8.5 0 1 0 20 15.4Z" />
+                    </svg>
+                  </span>
+                  <span class="c--choiceName">Moon</span>
+                  <span class="c--choiceHint">Cool instinct</span>
+                </button>
+              </div>
+
+              <div class="c--stakeBox">
+                <div class="c--stakeTop">
+                  <label for="stake">Secret stake</label>
+                  <strong class="c--stakeValue"><span id="stake-value">4</span> RUSH</strong>
+                </div>
+                <input class="c--range" id="stake" type="range" min="1" max="10" value="4" />
+                <div class="c--stakeScale"><span>1 cautious</span><span>10 bold</span></div>
+              </div>
+              <button class="c--btn c--sealBtn" type="button" data-next="sealed">Seal Sun · 4 RUSH</button>
+              <div class="c--gasless"><i></i> Gas sponsored · No ETH required</div>
+            </div>
+          </section>
+
+          <section class="c--screen c--sealed" data-screen="sealed">
+            <div class="c--statusBar"><span>9:42</span><span>5G ▰</span></div>
+            <header class="c--appBar">
+              <div class="c--wordmark">Minority Rush</div>
+              <span class="c--roundPill"><i></i> 8 joined</span>
+            </header>
+            <div class="c--sealedBody">
+              <div>
+                <div class="c--sealRing"><span class="c--lock"></span></div>
+                <h2>Your move is sealed.</h2>
+                <p class="c--sealedLead">Nobody can read your side or stake—not even from the block explorer.</p>
+                <div class="c--hashSlip">
+                  <span>Encrypted entry</span>
+                  <code>0xb3f8a7d1c294…8ea10f4c</code>
+                </div>
+                <div class="c--players" aria-label="Eight players joined">
+                  <span class="c--avatar">YOU</span><span class="c--avatar">0xA</span><span class="c--avatar">0x3</span
+                  ><span class="c--avatar">0xF</span>
+                </div>
+              </div>
+              <div style="width: 100%">
+                <button class="c--btn is--moon" type="button" data-next="reveal">Simulate round close</button>
+                <div class="c--gasless"><i></i> Computing on encrypted stakes</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="c--screen c--reveal" data-screen="reveal">
+            <div class="c--statusBar"><span>9:43</span><span>5G ▰</span></div>
+            <header class="c--appBar">
+              <div class="c--wordmark">Minority Rush</div>
+              <span style="font-size: 0.68rem">Round 018 settled</span>
+            </header>
+            <div class="c--revealBody">
+              <div>
+                <p class="c--winLabel">The quieter side was</p>
+                <div class="c--winnerWord">SUN</div>
+              </div>
+              <div>
+                <h2>You read the room.</h2>
+                <div class="c--reward">
+                  <div><span>Private reward</span><strong>+8 RUSH</strong></div>
+                  <span class="c--rewardBadge">2× stake</span>
+                </div>
+                <div class="c--proofRow">
+                  <i>✓</i><span>Result verified on Sepolia · Your stake remains private</span>
+                </div>
+                <button class="c--btn" type="button" data-next="pick">Play the next round</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <aside class="c--review" aria-label="Mockup stage navigation">
+        <h2>Flow review</h2>
+        <p class="c--reviewIntro">Use these steps or the buttons inside the phone.</p>
+        <nav class="c--stageNav">
+          <button class="c--stageBtn is--active" type="button" data-stage="login">
+            <span class="c--stageNum">01</span><span><strong>Email entry</strong><span>No wallet required</span></span>
+          </button>
+          <button class="c--stageBtn" type="button" data-stage="setup">
+            <span class="c--stageNum">02</span
+            ><span><strong>Private player</strong><span>Wallet + gasless account</span></span>
+          </button>
+          <button class="c--stageBtn" type="button" data-stage="pick">
+            <span class="c--stageNum">03</span><span><strong>Make a move</strong><span>Side + secret stake</span></span>
+          </button>
+          <button class="c--stageBtn" type="button" data-stage="sealed">
+            <span class="c--stageNum">04</span><span><strong>Sealed</strong><span>Encrypted onchain</span></span>
+          </button>
+          <button class="c--stageBtn" type="button" data-stage="reveal">
+            <span class="c--stageNum">05</span><span><strong>Reveal</strong><span>Private reward</span></span>
+          </button>
+        </nav>
+        <div class="c--reviewFoot">
+          <strong>Prototype note</strong>
+          This mockup simulates the UX only. Authentication, FHE, paymaster, and contracts are not connected.
+        </div>
+      </aside>
+    </main>
+
+    <script>
+      const screens = [...document.querySelectorAll("[data-screen]")];
+      const stageButtons = [...document.querySelectorAll("[data-stage]")];
+      const nextButtons = [...document.querySelectorAll("[data-next]")];
+      const choices = [...document.querySelectorAll("[data-choice]")];
+      const stake = document.querySelector("#stake");
+      const stakeValue = document.querySelector("#stake-value");
+      const sealButton = document.querySelector(".c--sealBtn");
+      const loginForm = document.querySelector("#login-form");
+      let selectedChoice = "Sun";
+
+      function showScreen(name) {
+        screens.forEach((screen) => screen.classList.toggle("is--active", screen.dataset.screen === name));
+        stageButtons.forEach((button) => button.classList.toggle("is--active", button.dataset.stage === name));
+      }
+
+      stageButtons.forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.stage)));
+      nextButtons.forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.next)));
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        showScreen("setup");
+      });
+
+      choices.forEach((choice) => {
+        choice.addEventListener("click", () => {
+          selectedChoice = choice.dataset.choice === "sun" ? "Sun" : "Moon";
+          choices.forEach((item) => {
+            const active = item === choice;
+            item.classList.toggle("is--selected", active);
+            item.setAttribute("aria-pressed", String(active));
+          });
+          sealButton.textContent = `Seal ${selectedChoice} · ${stake.value} RUSH`;
+        });
+      });
+
+      stake.addEventListener("input", () => {
+        stakeValue.textContent = stake.value;
+        sealButton.textContent = `Seal ${selectedChoice} · ${stake.value} RUSH`;
+      });
+    </script>
+  </body>
+</html>
