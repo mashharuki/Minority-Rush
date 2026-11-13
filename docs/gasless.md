@@ -67,9 +67,12 @@ full two-player round on Sepolia with the redeployed contracts (plain EOAs), and
 credentials, the **email login -> smart account -> sponsored onboarding UserOperation** (observer + faucet + operator
 in one gasless batch).
 
-**Not yet verified end to end:** the rest of a gasless round (sealing an encrypted entry from the smart account,
-settle, claim) and Zama decryption permits signed by the Privy embedded wallet (balance/reward decryption through the
-observer). Run a full round from the UI before relying on them.
+Also verified manually from the UI: a full gasless round (seal an encrypted entry from the smart account, settle,
+claim) reaching the result screen, including Zama decryption permits signed by the Privy embedded wallet
+(reward decryption through the observer).
+
+**Not yet verified:** a gasless round with two or more players on the live deployment, the Vercel deployment of the
+web app and sponsor API, and the PWA install/offline behaviour on real devices.
 
 ## Troubleshooting (found during the first real run)
 
