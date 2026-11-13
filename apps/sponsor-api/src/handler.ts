@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-import type { SponsorConfig } from './config'
-import type { RateLimiter } from './rateLimit'
-import { ENTRY_POINT_V07, SEPOLIA_CHAIN_ID, validateUserOp, type UserOpLike } from './validate'
+import type { SponsorConfig } from './config.js'
+import type { RateLimiter } from './rateLimit.js'
+import { ENTRY_POINT_V07, SEPOLIA_CHAIN_ID, validateUserOp, type UserOpLike } from './validate.js'
 
 export type SponsorRequest = { method: string; headers: Record<string, string | undefined>; body: unknown }
 export type SponsorResponse = { status: number; headers: Record<string, string>; body: unknown }

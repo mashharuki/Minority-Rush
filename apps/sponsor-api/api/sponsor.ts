@@ -2,9 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import { verifyAccessToken } from '@privy-io/node'
 
-import { loadConfig } from '../src/config'
-import { handleSponsorRequest } from '../src/handler'
-import { createRateLimiter } from '../src/rateLimit'
+// Explicit .js extensions: Vercel runs this package as native ESM (package.json "type": "module").
+import { loadConfig } from '../src/config.js'
+import { handleSponsorRequest } from '../src/handler.js'
+import { createRateLimiter } from '../src/rateLimit.js'
 
 const SEPOLIA_BUNDLER_RPC = 'https://api.pimlico.io/v2/11155111/rpc'
 

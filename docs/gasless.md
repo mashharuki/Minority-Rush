@@ -71,8 +71,11 @@ Also verified manually from the UI: a full gasless round (seal an encrypted entr
 claim) reaching the result screen, including Zama decryption permits signed by the Privy embedded wallet
 (reward decryption through the observer).
 
-**Not yet verified:** a gasless round with two or more players on the live deployment, the Vercel deployment of the
-web app and sponsor API, and the PWA install/offline behaviour on real devices.
+Also verified on the live Vercel deployment (https://minority-rush-web.vercel.app with
+https://minority-rush-sponsor.vercel.app/api/sponsor): email login and a gasless round from the public site.
+
+**Not yet verified:** a gasless round with two or more players on the live deployment, and the PWA
+install/offline behaviour on real devices.
 
 ## Troubleshooting (found during the first real run)
 
