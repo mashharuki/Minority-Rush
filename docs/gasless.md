@@ -62,9 +62,22 @@ the in-memory rate limiter is only a first line of defence.
 
 ## Status
 
-Verified: contract observer ACL tests (16 passing), sponsor-api unit tests (19 passing), web typecheck/build, and the
-full two-player round on Sepolia with the redeployed contracts (plain EOAs).
+Verified: contract observer ACL tests (16 passing), sponsor-api unit tests (24 passing), web typecheck/build, the
+full two-player round on Sepolia with the redeployed contracts (plain EOAs), and, locally with real Privy/Pimlico
+credentials, the **email login -> smart account -> sponsored onboarding UserOperation** (observer + faucet + operator
+in one gasless batch).
 
-**Not verified:** the Privy login, the Pimlico paymaster and the smart-account UserOperation path have never run:
-they need your Privy and Pimlico credentials. Expect some integration fixes on first real run (e.g. paymaster
-context fields, gas price source, Privy embedded-wallet `signTypedData` for Zama decryption permits).
+**Not yet verified end to end:** the rest of a gasless round (sealing an encrypted entry from the smart account,
+settle, claim) and Zama decryption permits signed by the Privy embedded wallet (balance/reward decryption through the
+observer). Run a full round from the UI before relying on them.
+
+## Troubleshooting (found during the first real run)
+
+| Symptom | Cause / fix |
+| --- | --- |
+| `ERR_CONNECTION_REFUSED` to the sponsor API | `VITE_SPONSOR_API_URL` port differs from the dev server (`PORT`, default 8787) |
+| CORS preflight 403 / `origin not allowed` | `ALLOWED_WEB_ORIGIN` must equal the web origin (e.g. `http://localhost:5173`); restart the API after editing |
+| 401 `unauthorized` | Privy token verification failed: check `PRIVY_APP_ID` / `PRIVY_VERIFICATION_KEY`; the API logs the reason |
+| `entry point not allowed` | The sponsor API only sponsors EntryPoint v0.7 (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`) |
+| Page blank with a Privy error | Invalid `VITE_PRIVY_APP_ID`; the app falls back to wallet-only play |
+| Env changes ignored | Vite and the API read `.env.local` only at start: restart both |
