@@ -42,7 +42,10 @@ export function loadConfig(env: Record<string, string | undefined>): ConfigResul
       privyVerificationKey: v.PRIVY_VERIFICATION_KEY,
       pimlicoApiKey: v.PIMLICO_API_KEY,
       policyId: v.PIMLICO_SPONSORSHIP_POLICY_ID,
-      allowedOrigins: v.ALLOWED_WEB_ORIGIN.split(',').map((o) => o.trim()),
+      // An Origin header never has a trailing slash, so tolerate one in the setting.
+      allowedOrigins: v.ALLOWED_WEB_ORIGIN.split(',')
+        .map((o) => o.trim().replace(/\/+$/, ''))
+        .filter(Boolean),
       chip: v.CHIP_ADDRESS as `0x${string}`,
       game: v.GAME_ADDRESS as `0x${string}`,
       rateLimitPerMinute: v.RATE_LIMIT_PER_MINUTE,

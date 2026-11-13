@@ -14,6 +14,8 @@ createServer((req, res) => {
     res.end()
     return
   }
+  // Access log (no bodies, no tokens): method, origin and the status we answered with.
+  res.on('finish', () => console.log(`${req.method} ${req.url} origin=${req.headers.origin ?? '-'} -> ${res.statusCode}`))
   handler(req, res).catch((error: unknown) => {
     console.error('dev-server: unhandled error', error instanceof Error ? error.message : 'unknown')
     res.statusCode = 500

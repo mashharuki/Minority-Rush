@@ -86,6 +86,13 @@ async function authenticate(req: SponsorRequest, deps: Deps): Promise<string | n
 export async function handleSponsorRequest(req: SponsorRequest, deps: Deps): Promise<SponsorResponse> {
   const headers = cors(req.headers.origin, deps.config.allowedOrigins)
   const originAllowed = Boolean(headers['access-control-allow-origin'])
+  if (!originAllowed) {
+    // Origins are public values (not secrets): logging them makes ALLOWED_WEB_ORIGIN typos easy to spot.
+    console.warn('sponsor request rejected: origin not allowed', {
+      origin: req.headers.origin ?? null,
+      allowed: deps.config.allowedOrigins,
+    })
+  }
   if (req.method === 'OPTIONS') return { status: originAllowed ? 204 : 403, headers, body: null }
   if (req.method !== 'POST') return fail(405, null, 'method not allowed', headers)
   if (!originAllowed) return fail(403, null, 'origin not allowed', headers)
