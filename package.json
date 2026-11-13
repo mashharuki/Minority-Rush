@@ -1,0 +1,13 @@
+{
+  "name": "minority-rush",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun --cwd apps/web run dev",
+    "build": "bun --cwd apps/web run build",
+    "compile": "bun --cwd packages/contracts run compile",
+    "test": "bun --cwd packages/contracts run test",
+    "export:abi": "bun --cwd packages/contracts run export:abi",
+    "deploy:sepolia": "bun --cwd packages/contracts run deploy:sepolia"
+  }
+}
