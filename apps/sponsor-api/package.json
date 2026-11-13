@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "bun dev-server.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
