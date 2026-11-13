@@ -12,8 +12,8 @@ import {
   Timer,
   UpdateBanner,
 } from '@/components'
-import { createGameClient } from '@/lib/client'
-import { env, isDeployed } from '@/lib/env'
+import { createGameClient, type LoginKind } from '@/lib/client'
+import { env, isAaEnabled, isDeployed } from '@/lib/env'
 import { usePwa } from '@/lib/pwa'
 import { errorMessage, type MyResult, type RoundState, type Side } from '@/lib/types'
 
@@ -49,7 +49,10 @@ function useCountdown(endTime: number): number {
 }
 
 export default function App() {
-  const client = useMemo(() => createGameClient(), [])
+  const clients = useMemo(() => ({ email: createGameClient('email'), wallet: createGameClient('wallet') }), [])
+  const [kind, setKind] = useState<LoginKind>(isAaEnabled ? 'email' : 'wallet')
+  const client = clients[kind]
+  const isGasless = client.mode === 'live' && kind === 'email'
   const [screen, setScreen] = useState<Screen>('login')
   const [address, setAddress] = useState<string | null>(null)
   const [side, setSide] = useState<Side>('sun')
@@ -80,12 +83,14 @@ export default function App() {
     }
   }, [])
 
-  const connect = () =>
+  const connect = (next: LoginKind) =>
     run(async () => {
-      setAddress(await client.connect())
+      setKind(next)
+      const chosen = clients[next]
+      setAddress(await chosen.connect())
       setScreen('setup')
       setStep('Preparing your private player')
-      await client.onboard(setStep)
+      await chosen.onboard(setStep)
       setScreen('pick')
     })
 
@@ -159,13 +164,26 @@ export default function App() {
                   <p className="c--loginCopy">Choose a side. Set a secret stake. Win by thinking unlike the crowd.</p>
                 </div>
                 <div className="c--loginForm">
-                  <button className="c--btn" type="button" onClick={connect} disabled={isLocked}>
-                    {client.mode === 'demo' ? 'Play the demo' : 'Connect wallet'}
+                  <button className="c--btn" type="button" onClick={() => void connect(isAaEnabled ? 'email' : 'wallet')} disabled={isLocked}>
+                    {client.mode === 'demo' ? 'Play the demo' : isAaEnabled ? 'Play with email' : 'Connect wallet'}
                   </button>
+                  {isAaEnabled && (
+                    <button
+                      className="c--btn is--secondary"
+                      type="button"
+                      style={{ color: 'var(--ink)', borderColor: 'var(--line)' }}
+                      onClick={() => void connect('wallet')}
+                      disabled={isLocked}
+                    >
+                      Use a wallet instead
+                    </button>
+                  )}
                   <span className="c--trustLine">
                     {client.mode === 'demo'
                       ? 'Offline simulation · nothing is encrypted in demo mode'
-                      : 'Sepolia testnet · your side and stake stay encrypted'}
+                      : isAaEnabled
+                        ? 'Private wallet by Privy · gas sponsored · no seed phrase'
+                        : 'Sepolia testnet · your side and stake stay encrypted'}
                   </span>
                   <ErrorBox message={error} />
                   <Disclaimer />
@@ -186,7 +204,7 @@ export default function App() {
                   <ErrorBox message={error} />
                 </div>
                 {error && (
-                  <button className="c--btn" type="button" onClick={connect} disabled={isLocked}>
+                  <button className="c--btn" type="button" onClick={() => void connect(kind)} disabled={isLocked}>
                     Try again
                   </button>
                 )}
@@ -223,7 +241,11 @@ export default function App() {
                 </button>
                 <ErrorBox message={error} />
                 <div className="c--gasless">
-                  <i /> {client.mode === 'demo' ? 'Demo mode · no wallet needed' : 'Sepolia testnet · test ETH for gas'}
+                  <i /> {client.mode === 'demo'
+                    ? 'Demo mode · no wallet needed'
+                    : isGasless
+                      ? 'Gas sponsored · No ETH required'
+                      : 'Sepolia testnet · test ETH for gas'}
                 </div>
                 <Disclaimer />
               </div>

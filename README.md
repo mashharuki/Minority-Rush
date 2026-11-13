@@ -14,7 +14,8 @@ pools and always pick the minority, so the game only works because the state sta
 | Path | What |
 | --- | --- |
 | `packages/contracts` | Hardhat 2 + FHEVM. `RushChip` (ERC-7984 chip + faucet), `MinorityRushGame` |
-| `apps/web` | Vite + React mobile-first UI (viem + `@zama-fhe/sdk`) |
+| `apps/web` | Vite + React mobile-first UI (viem + `@zama-fhe/sdk`, Privy login, ERC-4337 smart account) |
+| `apps/sponsor-api` | Vercel function: Privy-authenticated, validated JSON-RPC proxy to Pimlico (gas sponsorship) |
 | `docs/` | Concept doc and UI mockup |
 
 ## Round flow
@@ -56,8 +57,9 @@ non-GET request go straight to the network, and no decrypted value is stored. Of
 
 Implemented: contracts, tests, wallet (injected) flow, user decryption of balance/reward, public decryption of the
 winner, installable PWA (manifest, icons, service worker, install hint after a round, offline banner that pauses
-actions, prompt-style updates) and an Etherscan verify link on the result screen. **Not yet:** Privy email login,
-ERC-4337 gasless/paymaster, Lism CSS, Sepolia deployment and E2E run,
+actions, prompt-style updates) and an Etherscan verify link on the result screen. **Implemented but not yet run with real credentials:**
+Privy email login, ERC-4337 smart account and Pimlico gas sponsorship (see [docs/gasless.md](docs/gasless.md)).
+**Not yet:** Lism CSS, Sepolia deployment and E2E run,
 `confidentialTransferAndCall` entry (we use operator + `confidentialTransferFrom`). The live client has not been run
 against Sepolia yet; only the mock-FHEVM contract tests and the offline demo UI were exercised. The service worker
 builds and passes a syntax check, but could not be exercised at runtime in the dev browser pane (no SW support there);
