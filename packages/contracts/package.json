@@ -1,5 +1,5 @@
 {
-  "name": "fhevm-hardhat-template",
+  "name": "@minority-rush/contracts",
   "description": "Hardhat-based template for developing FHEVM Solidity smart contracts",
   "version": "0.4.1",
   "engines": {
@@ -26,6 +26,8 @@
   "dependencies": {
     "@fhevm/mock-utils": "^0.4.2",
     "@fhevm/solidity": "^0.11.1",
+    "@openzeppelin/confidential-contracts": "0.5.3",
+    "@openzeppelin/contracts": "^5.6.1",
     "encrypted-types": "^0.0.4"
   },
   "devDependencies": {
@@ -50,7 +52,6 @@
     "ethers": "^6.16.0",
     "globals": "^17.6.0",
     "hardhat": "^2.28.6",
-    "hardhat-deploy": "^0.11.45",
     "hardhat-gas-reporter": "^2.3.0",
     "mocha": "^11.7.5",
     "prettier": "^3.8.3",
@@ -81,13 +82,9 @@
     "test:sepolia": "hardhat test --network sepolia",
     "build:ts": "tsc --project tsconfig.json",
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
-    "chain": "hardhat node --network hardhat --no-deploy",
-    "deploy:localhost": "hardhat deploy --network localhost",
-    "interact:localhost": "hardhat run scripts/interact-fhecounter.ts --network localhost",
-    "interact:sepolia": "hardhat run scripts/interact-fhecounter.ts --network sepolia",
-    "decrement:localhost": "hardhat run scripts/decrement-fhecounter.ts --network localhost",
-    "decrement:sepolia": "hardhat run scripts/decrement-fhecounter.ts --network sepolia",
-    "deploy:sepolia": "hardhat deploy --network sepolia",
+    "chain": "hardhat node --network hardhat",
+    "export:abi": "hardhat run scripts/export-abi.ts",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "verify:sepolia": "hardhat verify --network sepolia"
   },
   "overrides": {

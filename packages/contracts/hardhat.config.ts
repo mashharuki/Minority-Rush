@@ -4,14 +4,12 @@ import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "@typechain/hardhat";
 import * as dotenv from "dotenv";
-import "hardhat-deploy";
 import "hardhat-gas-reporter";
 import type { HardhatUserConfig } from "hardhat/config";
 import { vars } from "hardhat/config";
 import "solidity-coverage";
 
 import "./tasks/accounts";
-import "./tasks/FHECounter";
 
 dotenv.config();
 
@@ -35,9 +33,6 @@ const ETHERSCAN_API_KEY: string = getConfigValue("ETHERSCAN_API_KEY", "");
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
-  namedAccounts: {
-    deployer: 0,
-  },
   etherscan: {
     // Etherscan API V2: a single key works for all supported chains (per-network keys use the removed V1).
     apiKey: ETHERSCAN_API_KEY,
