@@ -15,7 +15,7 @@ import {
 ///      permanent ACL access to that holder's balance and transfer amounts so the owner can user-decrypt them.
 contract RushChip is ZamaEthereumConfig, ERC7984ObserverAccess {
     uint64 public constant FAUCET_AMOUNT = 20;
-    uint256 public constant FAUCET_COOLDOWN = 1 hours;
+    uint256 public constant FAUCET_COOLDOWN = 24 hours;
 
     mapping(address => uint256) public lastFaucetAt;
 

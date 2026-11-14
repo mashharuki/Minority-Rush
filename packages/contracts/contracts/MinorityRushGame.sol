@@ -24,14 +24,14 @@ contract MinorityRushGame is ZamaEthereumConfig {
         Open,
         Closing, // pools compared, waiting for public decryption of the winner
         Settled,
-        Cancelled // fewer than MIN_PLAYERS entered: stakes are refunded
+        Cancelled // fewer than minPlayers entered: stakes are refunded
     }
 
     struct Round {
         uint64 startTime;
         uint64 endTime;
         Status status;
-        uint8 playerCount;
+        uint16 playerCount;
         bool moonWon; // meaningful once Settled
         euint64 sunPool;
         euint64 moonPool;
@@ -46,13 +46,20 @@ contract MinorityRushGame is ZamaEthereumConfig {
         euint64 reward;
     }
 
-    uint8 public constant MIN_PLAYERS = 2;
-    uint8 public constant MAX_PLAYERS = 8;
     uint64 public constant MIN_STAKE = 1;
     uint64 public constant MAX_STAKE = 10;
 
     IERC7984 public immutable chip;
-    uint64 public immutable roundDuration;
+    uint32 public immutable windowSeconds;
+    uint16 public immutable minPlayers;
+    uint16 public immutable maxPlayers;
+
+    uint256 private constant DAY = 1 days;
+    /// @dev A round must stay open at least this long beyond the start window (bounds window vs. deadline gap).
+    uint256 private constant MIN_ROUND_SECONDS = 1800;
+
+    /// @dev Round deadlines as seconds after 00:00 UTC, strictly ascending, each < 86400.
+    uint32[] private _deadlines;
 
     uint256 public latestRoundId;
     mapping(uint256 => Round) private _rounds;
@@ -66,6 +73,9 @@ contract MinorityRushGame is ZamaEthereumConfig {
     event RoundCancelled(uint256 indexed roundId);
     event Claimed(uint256 indexed roundId, address indexed player);
 
+    error BadSchedule();
+    error OutsideWindow();
+    error RoundAlreadyStarted();
     error RoundNotFinished();
     error RoundNotOpen();
     error RoundStillActive();
@@ -77,23 +87,65 @@ contract MinorityRushGame is ZamaEthereumConfig {
     error NotEntered();
     error GameNotOperator();
 
-    constructor(IERC7984 chip_, uint64 roundDuration_) {
+    constructor(
+        IERC7984 chip_,
+        uint32[] memory deadlinesUtc_,
+        uint32 windowSeconds_,
+        uint16 minPlayers_,
+        uint16 maxPlayers_
+    ) {
+        if (minPlayers_ < 2 || maxPlayers_ < minPlayers_ || windowSeconds_ == 0) revert BadSchedule();
+        uint256 count = deadlinesUtc_.length;
+        if (count == 0 || deadlinesUtc_[count - 1] >= DAY) revert BadSchedule();
+
+        uint256 smallestGap = DAY - deadlinesUtc_[count - 1] + deadlinesUtc_[0];
+        for (uint256 i = 1; i < count; i++) {
+            if (deadlinesUtc_[i] <= deadlinesUtc_[i - 1]) revert BadSchedule();
+            uint256 gap = deadlinesUtc_[i] - deadlinesUtc_[i - 1];
+            if (gap < smallestGap) smallestGap = gap;
+        }
+        if (uint256(windowSeconds_) + MIN_ROUND_SECONDS > smallestGap) revert BadSchedule();
+
         chip = chip_;
-        roundDuration = roundDuration_;
+        _deadlines = deadlinesUtc_;
+        windowSeconds = windowSeconds_;
+        minPlayers = minPlayers_;
+        maxPlayers = maxPlayers_;
+    }
+
+    // ───────────────────────── Schedule ─────────────────────────
+
+    function schedule() external view returns (uint32[] memory deadlinesUtc, uint32 window) {
+        return (_deadlines, windowSeconds);
+    }
+
+    /// @notice First deadline strictly after `ts`, wrapping to the first deadline of the next day.
+    function nextDeadline(uint64 ts) public view returns (uint64) {
+        uint256 day = ts / DAY;
+        uint256 secondOfDay = ts % DAY;
+        uint256 count = _deadlines.length;
+        for (uint256 i = 0; i < count; i++) {
+            if (_deadlines[i] > secondOfDay) return uint64(day * DAY + _deadlines[i]);
+        }
+        return uint64((day + 1) * DAY + _deadlines[0]);
     }
 
     // ───────────────────────── Round lifecycle ─────────────────────────
 
-    /// @notice Start a new round. Allowed when no round exists or the previous one is Settled/Cancelled.
+    /// @notice Open the round for the next fixed deadline. Only callable inside that deadline's start window,
+    ///         and only while no round is Open (a Closing round does not block it).
     function startRound() external returns (uint256 roundId) {
+        uint64 end = nextDeadline(uint64(block.timestamp));
+        if (block.timestamp < uint256(end) - windowSeconds) revert OutsideWindow();
         if (latestRoundId != 0) {
-            Status s = _rounds[latestRoundId].status;
-            if (s == Status.Open || s == Status.Closing) revert RoundStillActive();
+            Round storage last = _rounds[latestRoundId];
+            if (last.status == Status.Open) revert RoundStillActive();
+            if (last.endTime == end) revert RoundAlreadyStarted();
         }
         roundId = ++latestRoundId;
         Round storage r = _rounds[roundId];
         r.startTime = uint64(block.timestamp);
-        r.endTime = uint64(block.timestamp) + roundDuration;
+        r.endTime = end;
         r.status = Status.Open;
         r.sunPool = FHE.asEuint64(0);
         r.moonPool = FHE.asEuint64(0);
@@ -116,7 +168,7 @@ contract MinorityRushGame is ZamaEthereumConfig {
         if (r.status != Status.Open || block.timestamp >= r.endTime) revert RoundNotOpen();
         Entry storage e = _entries[roundId][msg.sender];
         if (e.entered) revert AlreadyEntered();
-        if (r.playerCount >= MAX_PLAYERS) revert RoundFull();
+        if (r.playerCount >= maxPlayers) revert RoundFull();
         if (!chip.isOperator(msg.sender, address(this))) revert GameNotOperator();
 
         e.entered = true;
@@ -158,7 +210,7 @@ contract MinorityRushGame is ZamaEthereumConfig {
         if (r.status != Status.Open) revert RoundNotOpen();
         if (block.timestamp < r.endTime) revert RoundNotFinished();
 
-        if (r.playerCount < MIN_PLAYERS) {
+        if (r.playerCount < minPlayers) {
             r.status = Status.Cancelled;
             emit RoundCancelled(roundId);
             return;
@@ -230,7 +282,7 @@ contract MinorityRushGame is ZamaEthereumConfig {
             uint64 startTime,
             uint64 endTime,
             Status status,
-            uint8 playerCount,
+            uint16 playerCount,
             bool moonWon,
             bytes32 moonWinsHandle
         )
