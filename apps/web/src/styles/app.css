@@ -63,111 +63,11 @@
           overflow: hidden;
         }
 
-        .c--brief {
-          align-self: stretch;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          max-height: 850px;
-          padding-block: 12px;
-        }
-
-        .c--kicker {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          width: fit-content;
-          font-weight: 700;
-          font-size: 0.76rem;
-          letter-spacing: 0.04em;
-        }
-
-        .c--kicker::before {
-          content: "";
-          width: 28px;
-          height: 2px;
-          background: var(--ink);
-        }
-
-        .c--brief h1 {
-          max-width: 8ch;
-          margin: 22px 0 18px;
-          font-family: var(--display);
-          font-size: clamp(3rem, 6vw, 6.8rem);
-          font-weight: 600;
-          line-height: 0.83;
-          letter-spacing: -0.07em;
-        }
-
-        .c--briefCopy {
-          max-width: 34ch;
-          margin: 0;
-          color: rgba(33, 35, 61, 0.7);
-          font-size: clamp(0.95rem, 1.2vw, 1.12rem);
-          line-height: 1.6;
-        }
-
-        .c--legend {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1px;
-          margin-top: 44px;
-          border: 1px solid var(--line);
-          background: var(--line);
-        }
-
-        .c--legendItem {
-          min-height: 96px;
-          padding: 18px;
-          background: var(--paper);
-        }
-
-        .c--legendItem strong {
-          display: block;
-          margin-bottom: 18px;
-          font-family: var(--display);
-          font-size: 1.4rem;
-        }
-
-        .c--legendItem span {
-          color: rgba(33, 35, 61, 0.6);
-          font-size: 0.78rem;
-        }
-
-        .c--privacyNote {
-          max-width: 34ch;
-          margin: 36px 0 0;
-          font-size: 0.75rem;
-          line-height: 1.55;
-          color: rgba(33, 35, 61, 0.5);
-        }
-
         .c--phoneStage {
           position: relative;
           display: grid;
           place-items: center;
           min-height: 850px;
-        }
-
-        .c--orbitBack {
-          position: absolute;
-          width: min(640px, 92%);
-          aspect-ratio: 1;
-          border: 1px solid rgba(33, 35, 61, 0.12);
-          border-radius: 50%;
-        }
-
-        .c--orbitBack::before,
-        .c--orbitBack::after {
-          content: "";
-          position: absolute;
-          inset: 12%;
-          border: inherit;
-          border-radius: inherit;
-        }
-
-        .c--orbitBack::after {
-          inset: 29%;
         }
 
         .c--phone {
@@ -236,58 +136,9 @@
           align-items: center;
           justify-content: space-between;
           min-height: 48px;
-          padding: 12px 22px 0;
+          padding: 12px 24px 0;
           font-size: 0.7rem;
           font-weight: 600;
-        }
-
-        .c--statusIcons {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-
-        .c--signal {
-          display: flex;
-          align-items: end;
-          gap: 1.5px;
-          height: 10px;
-        }
-
-        .c--signal i {
-          display: block;
-          width: 2px;
-          background: currentColor;
-          border-radius: 2px;
-        }
-
-        .c--signal i:nth-child(1) {
-          height: 3px;
-        }
-        .c--signal i:nth-child(2) {
-          height: 5px;
-        }
-        .c--signal i:nth-child(3) {
-          height: 7px;
-        }
-        .c--signal i:nth-child(4) {
-          height: 9px;
-        }
-
-        .c--battery {
-          width: 18px;
-          height: 9px;
-          padding: 1px;
-          border: 1px solid currentColor;
-          border-radius: 2px;
-        }
-
-        .c--battery::after {
-          content: "";
-          display: block;
-          width: 75%;
-          height: 100%;
-          background: currentColor;
         }
 
         .c--appBar {
@@ -309,12 +160,12 @@
         .c--balancePill {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 7px 10px;
+          gap: 8px;
+          padding: 8px 12px;
           border: 1px solid var(--white-line);
           border-radius: 99px;
-          font-size: 0.67rem;
-          color: rgba(255, 255, 255, 0.74);
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.86);
         }
 
         .c--roundPill i,
@@ -323,14 +174,13 @@
           height: 6px;
           border-radius: 50%;
           background: var(--mint);
-          box-shadow: 0 0 0 4px rgba(114, 219, 190, 0.12);
         }
 
         .c--content {
           position: relative;
           z-index: 2;
           flex: 1;
-          padding: 18px 20px 24px;
+          padding: 20px 20px 24px;
         }
 
         .c--btn {
@@ -340,7 +190,7 @@
           gap: 8px;
           width: 100%;
           min-height: 52px;
-          padding: 12px 18px;
+          padding: 12px 20px;
           border: 0;
           border-radius: 16px;
           background: var(--sun);
@@ -361,9 +211,7 @@
         }
 
         .c--btn:focus-visible,
-        .c--choice:focus-visible,
-        .c--stageBtn:focus-visible,
-        .c--textInput:focus-visible {
+        .c--choice:focus-visible {
           outline: 3px solid var(--mint);
           outline-offset: 3px;
         }
@@ -388,26 +236,20 @@
           color: var(--ink);
         }
 
+        .c--login .c--btn.is--secondary {
+          border-color: var(--line);
+          color: var(--ink);
+        }
+
+        .c--barNote {
+          font-size: 0.75rem;
+          opacity: 0.75;
+        }
+
         .c--login .c--wordmark {
           display: flex;
           align-items: center;
           gap: 8px;
-        }
-
-        .c--brandMark {
-          position: relative;
-          width: 22px;
-          height: 22px;
-          border: 2px solid var(--ink);
-          border-radius: 50%;
-        }
-
-        .c--brandMark::after {
-          content: "";
-          position: absolute;
-          inset: 4px -5px 4px 9px;
-          border-radius: 50%;
-          background: var(--sun);
         }
 
         .c--loginHero {
@@ -416,7 +258,7 @@
           flex: 1;
           flex-direction: column;
           justify-content: space-between;
-          padding: 34px 24px 26px;
+          padding: 36px 24px 28px;
         }
 
         .c--loginHero::before {
@@ -453,7 +295,7 @@
         .c--loginCopy {
           max-width: 24ch;
           margin: 24px 0 0;
-          color: rgba(33, 35, 61, 0.64);
+          color: rgba(33, 35, 61, 0.78);
           line-height: 1.5;
         }
 
@@ -461,36 +303,17 @@
           position: relative;
           z-index: 1;
           display: grid;
-          gap: 10px;
-        }
-
-        .c--fieldLabel {
-          font-size: 0.74rem;
-          font-weight: 600;
-        }
-
-        .c--textInput {
-          width: 100%;
-          min-height: 52px;
-          border: 1px solid var(--line);
-          border-radius: 14px;
-          padding: 0 16px;
-          background: rgba(255, 255, 255, 0.45);
-          color: var(--ink);
-        }
-
-        .c--textInput::placeholder {
-          color: rgba(33, 35, 61, 0.38);
+          gap: 12px;
         }
 
         .c--trustLine {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           margin-top: 4px;
-          color: rgba(33, 35, 61, 0.5);
-          font-size: 0.66rem;
+          color: rgba(33, 35, 61, 0.72);
+          font-size: 0.75rem;
         }
 
         .c--trustLine svg {
@@ -512,14 +335,14 @@
           flex: 1;
           flex-direction: column;
           justify-content: space-between;
-          padding: 18px 24px 26px;
+          padding: 20px 24px 28px;
         }
 
         .c--setupSeal {
           position: relative;
           width: 224px;
           height: 224px;
-          margin: 22px auto 28px;
+          margin: 24px auto 28px;
           display: grid;
           place-items: center;
           border: 1px solid rgba(33, 35, 61, 0.18);
@@ -544,7 +367,6 @@
           width: 24px;
           height: 24px;
           background: var(--mint);
-          box-shadow: 0 0 0 9px rgba(114, 219, 190, 0.3);
         }
 
         .c--setup h2,
@@ -559,53 +381,9 @@
 
         .c--setupLead {
           max-width: 26ch;
-          margin: 12px 0 26px;
+          margin: 12px 0 28px;
           color: rgba(33, 35, 61, 0.62);
           line-height: 1.5;
-        }
-
-        .c--accountStack {
-          display: grid;
-          gap: 8px;
-          margin-bottom: 20px;
-        }
-
-        .c--accountRow {
-          display: grid;
-          grid-template-columns: 32px 1fr auto;
-          gap: 10px;
-          align-items: center;
-          min-height: 54px;
-          padding: 8px 12px;
-          border-bottom: 1px solid rgba(33, 35, 61, 0.15);
-        }
-
-        .c--accountIcon {
-          display: grid;
-          place-items: center;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          background: var(--ink);
-          color: #fff;
-          font-size: 0.7rem;
-          font-weight: 700;
-        }
-
-        .c--accountRow strong {
-          display: block;
-          font-size: 0.78rem;
-        }
-
-        .c--accountRow small {
-          color: rgba(33, 35, 61, 0.54);
-          font-size: 0.66rem;
-        }
-
-        .c--check {
-          color: #167b65;
-          font-weight: 700;
-          font-size: 0.72rem;
         }
 
         .c--gameHeader {
@@ -649,8 +427,8 @@
         .c--choices {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 26px;
+          gap: 12px;
+          margin-top: 28px;
         }
 
         .c--choice {
@@ -659,7 +437,7 @@
           overflow: hidden;
           border: 1px solid var(--white-line);
           border-radius: 22px 22px 8px 22px;
-          padding: 18px;
+          padding: 20px;
           text-align: left;
           cursor: pointer;
           background: transparent;
@@ -724,12 +502,12 @@
           left: 18px;
           bottom: 20px;
           color: currentColor;
-          opacity: 0.58;
-          font-size: 0.65rem;
+          opacity: 0.78;
+          font-size: 0.75rem;
         }
 
         .c--stakeBox {
-          margin-top: 18px;
+          margin-top: 20px;
           padding-top: 16px;
           border-top: 1px solid var(--white-line);
         }
@@ -752,15 +530,15 @@
 
         .c--range {
           width: 100%;
-          margin: 16px 0 10px;
+          margin: 16px 0 12px;
           accent-color: var(--sun);
         }
 
         .c--stakeScale {
           display: flex;
           justify-content: space-between;
-          color: rgba(255, 255, 255, 0.4);
-          font-size: 0.62rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.75rem;
         }
 
         .c--sealBtn {
@@ -771,8 +549,8 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          margin-top: 10px;
+          gap: 8px;
+          margin-top: 12px;
           color: rgba(255, 255, 255, 0.48);
           font-size: 0.64rem;
         }
@@ -794,7 +572,7 @@
           flex-direction: column;
           align-items: center;
           justify-content: space-between;
-          padding: 22px 24px 26px;
+          padding: 24px 24px 28px;
           text-align: center;
         }
 
@@ -819,7 +597,7 @@
           border: 24px solid var(--moon);
           border-top-color: var(--sun);
           border-radius: 50%;
-          animation: seal-turn 5s linear infinite;
+          animation: seal-turn 5s linear infinite; /* check-ui-ignore: 締切待ちの進行中を示す動き */
         }
 
         @keyframes seal-turn {
@@ -860,7 +638,7 @@
         .c--hashSlip {
           width: 100%;
           margin-top: 20px;
-          padding: 15px 16px;
+          padding: 16px 16px;
           border: 1px dashed rgba(255, 255, 255, 0.22);
           border-radius: 10px;
           text-align: left;
@@ -868,51 +646,18 @@
 
         .c--hashSlip span {
           display: block;
-          color: rgba(255, 255, 255, 0.44);
-          font-size: 0.62rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.75rem;
         }
 
         .c--hashSlip code {
           display: block;
           overflow: hidden;
-          margin-top: 6px;
+          margin-top: 8px;
           color: var(--moon-soft);
           font-size: 0.7rem;
           text-overflow: ellipsis;
           white-space: nowrap;
-        }
-
-        .c--players {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 18px 0;
-        }
-
-        .c--avatar {
-          display: grid;
-          place-items: center;
-          width: 34px;
-          height: 34px;
-          margin-left: -7px;
-          border: 3px solid #1d2146;
-          border-radius: 50%;
-          background: var(--paper);
-          color: var(--ink);
-          font-size: 0.62rem;
-          font-weight: 700;
-        }
-
-        .c--avatar:first-child {
-          margin-left: 0;
-          background: var(--sun-soft);
-        }
-
-        .c--avatar:nth-child(2) {
-          background: var(--moon-soft);
-        }
-        .c--avatar:nth-child(3) {
-          background: var(--mint);
         }
 
         .c--reveal {
@@ -930,33 +675,19 @@
           flex: 1;
           flex-direction: column;
           justify-content: space-between;
-          padding: 12px 24px 26px;
+          padding: 12px 24px 28px;
         }
 
         .c--winnerWord {
-          position: relative;
           margin: 8px 0 0;
           font-family: var(--display);
-          font-size: clamp(5.4rem, 25vw, 7rem);
-          line-height: 0.76;
-          letter-spacing: -0.095em;
-        }
-
-        .c--winnerWord::after {
-          content: "";
-          position: absolute;
-          right: 0;
-          bottom: -34px;
-          width: 100px;
-          height: 100px;
-          border: 19px solid var(--ink);
-          border-right-color: transparent;
-          border-radius: 50%;
-          transform: rotate(35deg);
+          font-size: clamp(4rem, 22vw, 6rem);
+          line-height: 0.8;
+          letter-spacing: -0.04em;
         }
 
         .c--winLabel {
-          margin-top: 58px;
+          margin-top: 60px;
           font-weight: 700;
           font-size: 0.78rem;
         }
@@ -973,7 +704,7 @@
 
         .c--reward span {
           display: block;
-          color: rgba(33, 35, 61, 0.58);
+          color: rgba(33, 35, 61, 0.75);
           font-size: 0.7rem;
         }
 
@@ -985,7 +716,7 @@
         }
 
         .c--rewardBadge {
-          padding: 8px 10px;
+          padding: 8px 12px;
           border-radius: 99px;
           background: var(--mint);
           font-size: 0.68rem;
@@ -995,118 +726,22 @@
         .c--proofRow {
           display: flex;
           align-items: center;
-          gap: 9px;
-          margin: 18px 0 22px;
-          color: rgba(33, 35, 61, 0.62);
+          gap: 8px;
+          margin: 20px 0 24px;
+          color: rgba(33, 35, 61, 0.75);
           font-size: 0.7rem;
         }
 
-        .c--proofRow i {
-          display: grid;
-          place-items: center;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: var(--ink);
-          color: #fff;
-          font-style: normal;
-        }
-
-        .c--review {
-          align-self: stretch;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          max-height: 850px;
-        }
-
-        .c--review h2 {
-          margin: 0 0 8px;
-          font-family: var(--display);
-          font-size: 1.15rem;
-          letter-spacing: -0.035em;
-        }
-
-        .c--reviewIntro {
-          margin: 0 0 28px;
-          color: rgba(33, 35, 61, 0.56);
-          font-size: 0.8rem;
-          line-height: 1.5;
-        }
-
-        .c--stageNav {
-          display: grid;
-          border-top: 1px solid var(--line);
-        }
-
-        .c--stageBtn {
-          position: relative;
-          display: grid;
-          grid-template-columns: 30px 1fr auto;
-          align-items: center;
-          gap: 10px;
-          min-height: 68px;
-          padding: 0 4px;
-          border: 0;
-          border-bottom: 1px solid var(--line);
-          background: transparent;
-          text-align: left;
-          cursor: pointer;
-        }
-
-        .c--stageBtn::after {
-          content: "";
-          width: 8px;
-          height: 8px;
-          border: 1px solid rgba(33, 35, 61, 0.3);
-          border-radius: 50%;
-        }
-
-        .c--stageBtn.is--active::after {
-          border-color: var(--ink);
-          background: var(--sun);
-          box-shadow: 0 0 0 5px rgba(249, 154, 87, 0.2);
-        }
-
-        .c--stageNum {
-          color: rgba(33, 35, 61, 0.38);
-          font-family: var(--display);
-          font-size: 0.76rem;
-        }
-
-        .c--stageBtn strong {
-          display: block;
-          font-size: 0.84rem;
-        }
-
-        .c--stageBtn span:last-of-type {
-          display: block;
-          margin-top: 2px;
-          color: rgba(33, 35, 61, 0.48);
-          font-size: 0.68rem;
-        }
-
-        .c--reviewFoot {
-          margin-top: 30px;
-          padding: 16px;
-          border-left: 3px solid var(--moon);
-          background: rgba(255, 255, 255, 0.35);
-          font-size: 0.72rem;
-          line-height: 1.55;
-        }
-
-        .c--reviewFoot strong {
-          display: block;
-          margin-bottom: 4px;
+        .c--proofRow svg {
+          flex: none;
+          width: 16px;
+          height: 16px;
+          color: var(--ink);
         }
 
         @media (max-width: 1080px) {
           .c--canvas {
             grid-template-columns: minmax(390px, 1fr) 280px;
-          }
-
-          .c--brief {
-            display: none;
           }
         }
 
@@ -1126,11 +761,6 @@
             min-height: 100svh;
           }
 
-          .c--orbitBack,
-          .c--review {
-            display: none;
-          }
-
           .c--phone {
             width: 100%;
             height: 100svh;
@@ -1138,6 +768,20 @@
             border: 0;
             border-radius: 0;
             box-shadow: none;
+          }
+
+          /* 実機では端末自身のノッチとステータスバーがあるので、枠の模造は出さず安全領域だけ空ける */
+          .c--phone::before {
+            display: none;
+          }
+
+          .c--statusBar {
+            min-height: max(16px, env(safe-area-inset-top));
+            padding-top: 0;
+          }
+
+          .c--screen {
+            padding-bottom: env(safe-area-inset-bottom);
           }
         }
 
@@ -1153,28 +797,22 @@
         }
       
         .c--disclaimer {
-          margin: 14px 0 0;
-          color: rgba(255, 255, 255, 0.42);
-          font-size: 0.6rem;
+          margin: 16px 0 0;
+          color: rgba(255, 255, 255, 0.62);
+          font-size: 0.72rem;
           line-height: 1.5;
           text-align: center;
         }
+
         .c--login .c--disclaimer,
         .c--setup .c--disclaimer,
         .c--reveal .c--disclaimer {
-          color: rgba(33, 35, 61, 0.5);
+          color: rgba(33, 35, 61, 0.72);
         }
-        .c--stepList {
-          display: grid;
-          gap: 6px;
-          margin: 0 0 18px;
-          padding: 0;
-          list-style: none;
-          font-size: 0.75rem;
-        }
+
         .c--errorBox {
-          margin-top: 10px;
-          padding: 10px 12px;
+          margin-top: 12px;
+          padding: 12px 12px;
           border-radius: 10px;
           background: rgba(238, 111, 104, 0.18);
           color: inherit;
@@ -1209,8 +847,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 34px 16px 8px;
+    gap: 12px;
+    padding: 36px 16px 8px;
     background: var(--red);
     color: var(--ink);
     font-size: 0.7rem;
@@ -1222,14 +860,14 @@
   }
   .c--offline button {
     min-height: 28px;
-    padding: 0 10px;
+    padding: 0 12px;
     border: 1px solid var(--ink);
     border-radius: 99px;
     background: transparent;
     cursor: pointer;
   }
   .c--installBtn {
-    margin-top: 10px;
+    margin-top: 12px;
     color: var(--ink);
     border-color: rgba(33, 35, 61, 0.3);
   }
