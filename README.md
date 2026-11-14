@@ -20,21 +20,28 @@ pools and always pick the minority, so the game only works because the state sta
 
 ## Round flow
 
-1. `startRound()` → anyone, when no round is active.
+Rounds follow a fixed daily schedule with four deadlines (UTC seconds-of-day `[10800, 32400, 43200, 50400]`, i.e.
+JST 12:00, 18:00, 21:00 and 23:00). Each deadline has a 90-minute window before it in which a round can be started.
+
+1. `startRound()` → anyone, only inside one of those 90-minute windows. A round still closing or awaiting `finalizeRound`
+   does not block the next start.
 2. `enter(roundId, encSide, encStake, proof)` → pulls chips via ERC-7984 `confidentialTransferFrom` (the player first
-   calls `setOperator(game, until)`); credits the amount **actually transferred**. Stake is clamped to 1–10. 2–8 players.
+   calls `setOperator(game, until)`); credits the amount **actually transferred**. Stake is clamped to 1–10. 3–100 players.
 3. `closeRound()` → after the deadline (anyone): `FHE.lt` / `FHE.eq` / `FHE.randEbool` pick the winner, which is made
-   publicly decryptable. Fewer than 2 players → round cancelled, stakes refunded.
+   publicly decryptable. Fewer than 3 players → round cancelled, stakes refunded.
 4. `finalizeRound(roundId, moonWon, proof)` → anyone submits the decryption proof; `FHE.checkSignatures` verifies it.
 5. `claim(roundId)` → each player receives an encrypted payout (2× stake or 0) and can decrypt only their own result.
 
 **Public:** addresses, player count, timing, final winning side. **Private:** each side, stake, reward, balance, pools.
 
+The faucet gives 20 chips once per 24 hours per address. The web Home screen shows the countdown to the next deadline,
+the daily streak (one freeze earned every 7th consecutive day, at most one stored) and a share grid of recent results.
+
 ## Run it
 
 ```bash
 bun install --cwd packages/contracts && bun install --cwd apps/web
-bun run test            # 14 contract tests on the mock FHEVM
+bun run test            # 22 contract tests on the mock FHEVM
 bun run dev             # web app; runs an offline demo until contracts are deployed
 ```
 
@@ -46,6 +53,9 @@ Deploy to Sepolia (needs `PRIVATE_KEY`, `INFURA_API_KEY` via `.env` or `npx hard
 bun run deploy:sepolia   # writes apps/web/src/contracts/deployment.sepolia.json
 bun run export:abi
 ```
+
+Redeploying replaces the contracts: old balances and rounds are abandoned. The redeploy runbook (including setting
+`LAUNCH_DAY_KEY` in `apps/web/src/lib/schedule.ts`) is in [docs/deployment.md](docs/deployment.md#redeploy-runbook).
 
 ## PWA cache policy
 
@@ -64,3 +74,13 @@ Privy email login, ERC-4337 smart account and Pimlico gas sponsorship (see [docs
 against Sepolia yet; only the mock-FHEVM contract tests and the offline demo UI were exercised. The service worker
 builds and passes a syntax check, but could not be exercised at runtime in the dev browser pane (no SW support there);
 check install/offline in Chrome and Safari before shipping.
+
+Known gaps from review:
+
+- "See result" and payout claiming cover only the latest round. If a newer round started before the player returns,
+  an earlier settled round's payout is not offered for claim (its squares still show won/lost).
+- The live Home shows a "Free play" placeholder until the schedule loads, and shows no error if the RPC keeps failing.
+- The live scheduled paths were exercised only by contract tests, the local smoke run and a demo-mode browser run,
+  never against Sepolia.
+- Real close→finalized latency and gas with 100 players are unmeasured (see "Measured on Sepolia" in
+  [docs/deployment.md](docs/deployment.md)).
