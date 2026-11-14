@@ -155,7 +155,7 @@ export default function App() {
           {screen === 'login' && (
             <section className="c--screen c--login is--active">
               <StatusBar />
-              <AppBar right={<span style={{ fontSize: '0.68rem', opacity: 0.6 }}>{client.mode === 'demo' ? 'Demo mode' : 'Sepolia'}</span>} />
+              <AppBar right={<span className="c--barNote">{client.mode === 'demo' ? 'Demo mode' : 'Sepolia'}</span>} />
               <div className="c--loginHero">
                 <div>
                   <h2 className="c--loginTitle">
@@ -168,13 +168,7 @@ export default function App() {
                     {client.mode === 'demo' ? 'Play the demo' : isAaEnabled ? 'Play with email' : 'Connect wallet'}
                   </button>
                   {isAaEnabled && (
-                    <button
-                      className="c--btn is--secondary"
-                      type="button"
-                      style={{ color: 'var(--ink)', borderColor: 'var(--line)' }}
-                      onClick={() => void connect('wallet')}
-                      disabled={isLocked}
-                    >
+                    <button className="c--btn is--secondary" type="button" onClick={() => void connect('wallet')} disabled={isLocked}>
                       Use a wallet instead
                     </button>
                   )}
@@ -195,7 +189,7 @@ export default function App() {
           {screen === 'setup' && (
             <section className="c--screen c--setup is--active">
               <StatusBar />
-              <AppBar right={<span style={{ fontSize: '0.7rem' }}>{shortAddress}</span>} />
+              <AppBar right={<span className="c--barNote">{shortAddress}</span>} />
               <div className="c--setupBody">
                 <div>
                   <div className="c--setupSeal" />
@@ -293,7 +287,7 @@ export default function App() {
           {screen === 'reveal' && result && (
             <section className="c--screen c--reveal is--active">
               <StatusBar />
-              <AppBar right={<span style={{ fontSize: '0.68rem' }}>Round {round?.id ?? ''} settled</span>} />
+              <AppBar right={<span className="c--barNote">Round {round?.id ?? ''} settled</span>} />
               <div className="c--revealBody">
                 <div>
                   <p className="c--winLabel">{result.cancelled ? 'Not enough players' : 'The quieter side was'}</p>
@@ -309,7 +303,10 @@ export default function App() {
                     <span className="c--rewardBadge">{result.cancelled ? 'refund' : result.won ? '2× stake' : '0×'}</span>
                   </div>
                   <div className="c--proofRow">
-                    <i>✓</i>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8 12.5 2.8 2.8L16 9.5" />
+                    </svg>
                     <span>
                       Winner verified by on-chain decryption proof · Your stake remains private
                       {isDeployed && (
