@@ -47,3 +47,23 @@ export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message.split("\n")[0] ?? error.message;
   return String(error);
 }
+
+/** Fixed daily schedule. Deadlines are UTC seconds-of-day; a round may be started `windowSec` before each. */
+export type Schedule = { deadlinesUtcSec: readonly number[]; windowSec: number };
+
+export type Outcome = "won" | "lost" | "none";
+
+/** One finished/active round as seen by the player. `endTime` is unix SECONDS. */
+export type RoundRecord = {
+  id: number;
+  endTime: number;
+  status: RoundStatus;
+  entered: boolean;
+  winner: Side | null;
+};
+
+export type JoinState =
+  | { kind: "free" }
+  | { kind: "open"; endMs: number }
+  | { kind: "startable"; endMs: number }
+  | { kind: "waiting"; opensMs: number; endMs: number };
