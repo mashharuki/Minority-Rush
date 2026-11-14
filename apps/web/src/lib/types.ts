@@ -1,3 +1,5 @@
+import { BaseError, ContractFunctionRevertedError } from "viem";
+
 export type Side = "sun" | "moon";
 
 export type RoundStatus = "none" | "open" | "closing" | "settled" | "cancelled";
@@ -23,6 +25,9 @@ export type MyResult = {
 
 export type OnStep = (label: string) => void;
 
+/** `availableAtMs` (unix ms) is when the faucet can be used next. */
+export type DailyChips = { claimed: boolean; availableAtMs: number };
+
 /** One interface, two implementations: Sepolia (live) and an offline simulation (demo). */
 export interface GameClient {
   readonly mode: "live" | "demo";
@@ -32,18 +37,69 @@ export interface GameClient {
   getRound(): Promise<RoundState>;
   /** Decrypts the caller's private balance (asks for a signature in live mode). */
   readBalance(): Promise<number>;
-  /** Starts a round if needed, then seals side + stake. */
-  enter(side: Side, stake: number, onStep: OnStep): Promise<void>;
-  /** Anyone may call after the deadline: compare pools, public-decrypt the winner, finalize. */
-  settle(onStep: OnStep): Promise<void>;
-  /** Claim the payout and decrypt your reward. */
-  claim(onStep: OnStep): Promise<MyResult>;
+  /** Starts a round if needed, then seals side + stake. Resolves with the id of the round entered. */
+  enter(side: Side, stake: number, onStep: OnStep): Promise<number>;
+  /**
+   * Anyone may call after the deadline: close the round, public-decrypt the winner, finalize. Works for any round id.
+   * A step another client already did is skipped, never reported as an error.
+   */
+  settle(roundId: number, onStep: OnStep): Promise<void>;
+  /** Claim the payout of `roundId` (if not yet claimed) and decrypt your reward. */
+  claim(roundId: number, onStep: OnStep): Promise<MyResult>;
+  /** Sends the daily chip faucet when its 24h cooldown has passed; otherwise says when it will be available. */
+  claimDailyChips(onStep: OnStep): Promise<DailyChips>;
+  /** The fixed daily schedule. null = free play (demo): rounds can be started at any time. */
+  getSchedule(): Promise<Schedule | null>;
+  /** The latest `count` rounds, oldest first. Ids are >= 1; `endTime` is unix seconds. */
+  getRecentRounds(count: number): Promise<RoundRecord[]>;
+  /** Won/lost/none for each record, keyed by round id. Only entered + settled rounds need a decryption. */
+  getOutcomes(records: readonly RoundRecord[]): Promise<ReadonlyMap<number, Outcome>>;
 }
 
 export const MIN_STAKE = 1;
 export const MAX_STAKE = 10;
+/** Fewest entries a round needs to settle instead of being cancelled (contract constant). */
+export const MIN_PLAYERS = 3;
+
+const FRIENDLY_ERRORS: Record<string, string> = {
+  OutsideWindow: "No round is open right now",
+  RoundStillActive: "A round is still in progress",
+  RoundAlreadyStarted: "This round has already started",
+  RoundNotFinished: "This round has not ended yet",
+};
+
+/** Name of a decoded custom error. Only simulated (ABI-aware) calls produce one; viem walks the cause chain. */
+export function revertErrorName(error: unknown): string | null {
+  if (!(error instanceof BaseError)) return null;
+  const reverted = error.walk((e) => e instanceof ContractFunctionRevertedError);
+  return reverted instanceof ContractFunctionRevertedError ? (reverted.data?.errorName ?? null) : null;
+}
 
 export function errorMessage(error: unknown): string {
+  const name = revertErrorName(error);
+  if (name && FRIENDLY_ERRORS[name]) return FRIENDLY_ERRORS[name];
   if (error instanceof Error) return error.message.split("\n")[0] ?? error.message;
   return String(error);
 }
+
+/** Fixed daily schedule. Deadlines are UTC seconds-of-day; a round may be started `windowSec` before each. */
+export type Schedule = { deadlinesUtcSec: readonly number[]; windowSec: number };
+
+export type Outcome = "won" | "lost" | "none";
+
+/** One finished/active round as seen by the player. `endTime` is unix SECONDS. */
+export type RoundRecord = {
+  id: number;
+  endTime: number;
+  status: RoundStatus;
+  entered: boolean;
+  /** The player already claimed this round's payout (false when not entered). */
+  claimed: boolean;
+  winner: Side | null;
+};
+
+export type JoinState =
+  | { kind: "free" }
+  | { kind: "open"; endMs: number }
+  | { kind: "startable"; endMs: number }
+  | { kind: "waiting"; opensMs: number; endMs: number };
