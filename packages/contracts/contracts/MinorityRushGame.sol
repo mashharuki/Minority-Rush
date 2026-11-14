@@ -50,9 +50,15 @@ contract MinorityRushGame is ZamaEthereumConfig {
     uint64 public constant MAX_STAKE = 10;
 
     IERC7984 public immutable chip;
+    // Public getter names are part of the ABI used by clients, so these immutables keep camelCase.
+    // solhint-disable immutable-vars-naming
+    /// @notice How long before each deadline a round may be started.
     uint32 public immutable windowSeconds;
+    /// @notice Fewer entrants than this cancels the round and refunds stakes.
     uint16 public immutable minPlayers;
+    /// @notice Maximum entrants per round.
     uint16 public immutable maxPlayers;
+    // solhint-enable immutable-vars-naming
 
     uint256 private constant DAY = 1 days;
     /// @dev A round must stay open at least this long beyond the start window (bounds window vs. deadline gap).
@@ -96,11 +102,11 @@ contract MinorityRushGame is ZamaEthereumConfig {
     ) {
         if (minPlayers_ < 2 || maxPlayers_ < minPlayers_ || windowSeconds_ == 0) revert BadSchedule();
         uint256 count = deadlinesUtc_.length;
-        if (count == 0 || deadlinesUtc_[count - 1] >= DAY) revert BadSchedule();
+        if (count == 0 || deadlinesUtc_[count - 1] > DAY - 1) revert BadSchedule();
 
         uint256 smallestGap = DAY - deadlinesUtc_[count - 1] + deadlinesUtc_[0];
-        for (uint256 i = 1; i < count; i++) {
-            if (deadlinesUtc_[i] <= deadlinesUtc_[i - 1]) revert BadSchedule();
+        for (uint256 i = 1; i < count; ++i) {
+            if (!(deadlinesUtc_[i - 1] < deadlinesUtc_[i])) revert BadSchedule();
             uint256 gap = deadlinesUtc_[i] - deadlinesUtc_[i - 1];
             if (gap < smallestGap) smallestGap = gap;
         }
@@ -115,16 +121,21 @@ contract MinorityRushGame is ZamaEthereumConfig {
 
     // ───────────────────────── Schedule ─────────────────────────
 
+    /// @notice The fixed daily schedule.
+    /// @return deadlinesUtc Round deadlines in seconds after 00:00 UTC, ascending.
+    /// @return window Seconds before a deadline during which its round may be started.
     function schedule() external view returns (uint32[] memory deadlinesUtc, uint32 window) {
         return (_deadlines, windowSeconds);
     }
 
     /// @notice First deadline strictly after `ts`, wrapping to the first deadline of the next day.
+    /// @param ts Unix timestamp in seconds.
+    /// @return The next deadline as a Unix timestamp.
     function nextDeadline(uint64 ts) public view returns (uint64) {
         uint256 day = ts / DAY;
         uint256 secondOfDay = ts % DAY;
         uint256 count = _deadlines.length;
-        for (uint256 i = 0; i < count; i++) {
+        for (uint256 i = 0; i < count; ++i) {
             if (_deadlines[i] > secondOfDay) return uint64(day * DAY + _deadlines[i]);
         }
         return uint64((day + 1) * DAY + _deadlines[0]);
