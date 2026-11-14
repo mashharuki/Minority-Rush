@@ -86,8 +86,10 @@ Gas with 100 players is an extrapolation from the per-entry figure until measure
 ```bash
 cd packages/contracts
 bunx hardhat verify --network sepolia <RushChip address>
-bunx hardhat verify --network sepolia <MinorityRushGame address> <RushChip address> "[10800,32400,43200,50400]" 5400 3 100
+bunx hardhat verify --network sepolia --constructor-args scripts/verify-args.ts <MinorityRushGame address>
 ```
+
+`scripts/verify-args.ts` supplies the game's constructor arguments (chip address from `deployment.sepolia.json`, schedule from `schedule.config.ts`). This form has **not yet been run against Etherscan** (no credentials were available), so expect to adjust it.
 
 Sourcify is disabled in `hardhat.config.ts` because the installed `hardhat-verify` calls Sourcify API v1, which has
 been removed (404). Etherscan verification is unaffected.
