@@ -50,6 +50,8 @@ export interface GameClient {
 
 export const MIN_STAKE = 1;
 export const MAX_STAKE = 10;
+/** Fewest entries a round needs to settle instead of being cancelled (contract constant). */
+export const MIN_PLAYERS = 3;
 
 const FRIENDLY_ERRORS: Record<string, string> = {
   OutsideWindow: "No round is open right now",

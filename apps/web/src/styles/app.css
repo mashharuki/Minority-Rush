@@ -12,6 +12,7 @@
           --mint: #72dbbe;
           --red: #ee6f68;
           --line: rgba(33, 35, 61, 0.14);
+          --square-lost: rgba(255, 255, 255, 0.24);
           --white-line: rgba(255, 255, 255, 0.15);
           --display: "Syne", sans-serif;
           --body: "DM Sans", sans-serif;
@@ -881,5 +882,94 @@
     color: inherit;
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  .c--homeBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px 20px 24px;
+  }
+  .c--countLabel,
+  .c--countNote {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.77rem;
+  }
+  .c--countdown {
+    margin: 8px 0;
+    font-family: var(--display);
+    font-size: 3rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .c--homeStats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--white-line);
+    border-radius: 16px;
+  }
+  .c--statLabel {
+    display: block;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.72rem;
+  }
+  .c--streakValue {
+    display: block;
+    margin: 4px 0;
+    font-family: var(--display);
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .c--squares {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .c--square {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    border-radius: 4px;
+  }
+  .c--square.is--won {
+    border-color: var(--mint);
+    background: var(--mint);
+  }
+  .c--square.is--lost {
+    border-color: transparent;
+    background: var(--square-lost);
+  }
+  .c--homeActions,
+  .c--revealActions {
+    display: grid;
+    gap: 12px;
+    margin-top: auto;
+  }
+  .c--revealActions {
+    margin-top: 0;
+  }
+  .c--homeActions .c--gasless {
+    margin-top: 0;
+  }
+  .c--shareNote {
+    min-height: 1.2em;
+    margin: 8px 0 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .c--reveal .c--btn.is--secondary {
+    border-color: rgba(33, 35, 61, 0.3);
+    color: var(--ink);
+  }
+  .c--reveal .c--shareNote {
+    color: rgba(33, 35, 61, 0.72);
   }
 }

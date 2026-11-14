@@ -12,12 +12,16 @@ import {
   Timer,
   UpdateBanner,
 } from '@/components'
+import { HomeScreen, ShareButton } from '@/home'
+import { deriveDayRecord, useAutoSettle, useHistory, useNow, useSchedule, useShare } from '@/homeState'
 import { createGameClient, type LoginKind } from '@/lib/client'
 import { env, isAaEnabled, isDeployed } from '@/lib/env'
 import { usePwa } from '@/lib/pwa'
-import { errorMessage, type MyResult, type RoundState, type Side } from '@/lib/types'
+import { dayNumber, joinState, LAUNCH_DAY_KEY } from '@/lib/schedule'
+import { formatShareText } from '@/lib/shareGrid'
+import { errorMessage, MIN_PLAYERS, MIN_STAKE, type MyResult, type RoundState, type Side } from '@/lib/types'
 
-type Screen = 'login' | 'setup' | 'pick' | 'sealed' | 'reveal'
+type Screen = 'login' | 'setup' | 'home' | 'pick' | 'sealed' | 'reveal'
 
 const POLL_MS = 3000
 
@@ -39,14 +43,8 @@ function useRound(client: ReturnType<typeof createGameClient>, enabled: boolean)
   return { round, refresh }
 }
 
-function useCountdown(endTime: number): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500)
-    return () => clearInterval(id)
-  }, [])
-  return Math.max(0, Math.ceil((endTime - now) / 1000))
-}
+const isResultReady = (round: RoundState | null): boolean =>
+  round !== null && round.hasEntered && !round.hasClaimed && (round.status === 'settled' || round.status === 'cancelled')
 
 export default function App() {
   const clients = useMemo(() => ({ email: createGameClient('email'), wallet: createGameClient('wallet') }), [])
@@ -66,8 +64,20 @@ export default function App() {
   const pwa = usePwa()
 
   const isLocked = isBusy || pwa.isOffline
-  const { round, refresh } = useRound(client, screen === 'pick' || screen === 'sealed')
-  const secondsLeft = useCountdown(round?.endTime ?? 0)
+  const { round, refresh } = useRound(client, screen === 'home' || screen === 'pick' || screen === 'sealed')
+  const nowMs = useNow(screen === 'home' || screen === 'pick' || screen === 'sealed')
+  const secondsLeft = Math.max(0, Math.ceil(((round?.endTime ?? 0) - nowMs) / 1000))
+  const scheduleState = useSchedule(client, address !== null)
+  const schedule = scheduleState.isLoaded ? scheduleState.schedule : null
+  // Reload on entering home, and on reveal (every claim lands there).
+  const history = useHistory(client, address !== null && (screen === 'home' || screen === 'reveal') ? screen : null)
+  const { streak, recent } = useMemo(() => deriveDayRecord(schedule, history, nowMs), [schedule, history, nowMs])
+  const shareMessage = formatShareText({
+    dayNumber: dayNumber(Math.floor(nowMs / 1000), LAUNCH_DAY_KEY),
+    streak: streak.current,
+    outcomes: recent,
+  })
+  const share = useShare(shareMessage)
 
   const run = useCallback(async (task: () => Promise<void>) => {
     setIsBusy(true)
@@ -91,7 +101,7 @@ export default function App() {
       setScreen('setup')
       setStep('Preparing your private player')
       await chosen.onboard(setStep)
-      setScreen('pick')
+      setScreen('home')
     })
 
   const revealBalance = () =>
@@ -117,16 +127,40 @@ export default function App() {
   const roundOver = round !== null && round.status !== 'none' && secondsLeft === 0
   const canSettle = screen === 'sealed' && roundOver && round.hasEntered
 
+  const claimAndReveal = useCallback(async () => {
+    setResult(await client.claim(setStep))
+    setBalance(null)
+    setScreen('reveal')
+  }, [client])
+
   const settleAndClaim = useCallback(
     () =>
       run(async () => {
         await client.settle(setStep)
-        setResult(await client.claim(setStep))
-        setBalance(null)
-        setScreen('reveal')
+        await claimAndReveal()
       }),
-    [client, run],
+    [client, run, claimAndReveal],
   )
+
+  const seeResult = () => run(claimAndReveal)
+
+  const settleExpired = useCallback(
+    () =>
+      run(async () => {
+        await client.settle(setStep)
+        await refresh()
+      }),
+    [client, run, refresh],
+  )
+
+  // On home, close and finalize an expired round so the next one can start.
+  const isSettling = useAutoSettle({
+    isActive: screen === 'home',
+    round,
+    nowMs,
+    isBlocked: isBusy || pwa.isOffline,
+    settle: settleExpired,
+  })
 
   // Anyone can settle after the deadline; the first client to notice does it automatically.
   useEffect(() => {
@@ -137,13 +171,15 @@ export default function App() {
     })
   }, [canSettle, round, isBusy, pwa.isOffline, settleAndClaim])
 
-  const playAgain = () => {
+  const goHome = () => {
     setResult(null)
-    setScreen('pick')
+    setScreen('home')
     void refresh()
   }
 
   const players = round?.playerCount ?? 0
+  const isOutOfChips = balance !== null && balance < MIN_STAKE
+  const isScheduleReady = scheduleState.isLoaded
   const shortAddress = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ''
 
   return (
@@ -207,6 +243,30 @@ export default function App() {
             </section>
           )}
 
+          {screen === 'home' && (
+            <section className="c--screen is--active">
+              <StatusBar />
+              <AppBar right={<span className="c--barNote">{client.mode === 'demo' ? 'Demo mode' : shortAddress}</span>} />
+              <HomeScreen
+                join={joinState(schedule, nowMs, round ?? { status: 'none', endTime: 0 })}
+                nowMs={nowMs}
+                players={players}
+                minPlayers={MIN_PLAYERS}
+                streak={streak}
+                recent={recent}
+                hasUnseenResult={isResultReady(round)}
+                isLocked={isLocked || !isScheduleReady}
+                isSettling={isSettling}
+                step={step}
+                error={error}
+                shareStatus={share.status}
+                onJoin={() => setScreen('pick')}
+                onShare={share.share}
+                onSeeResult={() => void seeResult()}
+              />
+            </section>
+          )}
+
           {screen === 'pick' && (
             <section className="c--screen is--active">
               <StatusBar />
@@ -230,9 +290,10 @@ export default function App() {
                 </div>
                 <SidePicker value={side} onChange={setSide} />
                 <StakeSlider value={stake} onChange={setStake} />
-                <button className="c--btn c--sealBtn" type="button" onClick={seal} disabled={isLocked}>
+                <button className="c--btn c--sealBtn" type="button" onClick={seal} disabled={isLocked || isOutOfChips}>
                   {isBusy ? (step ?? 'Working…') : `Seal ${side === 'sun' ? 'Sun' : 'Moon'} · ${stake} RUSH`}
                 </button>
+                <ErrorBox message={isOutOfChips ? "Not enough chips. Claim today's chips first." : null} />
                 <ErrorBox message={error} />
                 <div className="c--gasless">
                   <i /> {client.mode === 'demo'
@@ -324,9 +385,12 @@ export default function App() {
                       )}
                     </span>
                   </div>
-                  <button className="c--btn" type="button" onClick={playAgain}>
-                    Play the next round
-                  </button>
+                  <div className="c--revealActions">
+                    <button className="c--btn" type="button" onClick={goHome}>
+                      Back to home
+                    </button>
+                    <ShareButton status={share.status} onShare={share.share} />
+                  </div>
                   <InstallHint canInstall={pwa.canInstall} isIosSafari={pwa.isIosSafari} onInstall={() => void pwa.install()} />
                   <Disclaimer />
                 </div>

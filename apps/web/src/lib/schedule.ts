@@ -2,6 +2,8 @@ import type { JoinState, RoundStatus, Schedule } from './types'
 
 export const JST_OFFSET_SEC = 32400
 const DAY_SEC = 86400
+/** JST day key of day #1 for share text. Placeholder (2026-11-14); Task 6 sets the real launch day. */
+export const LAUNCH_DAY_KEY = 20771
 
 /** First scheduled deadline strictly after `nowSec` (unix seconds). */
 export function nextDeadline(schedule: Schedule, nowSec: number): number {
