@@ -93,6 +93,8 @@ export function createLiveClient(connectSession: () => Promise<Session>): GameCl
       onStep("Closing the previous round");
       await write(game, gameAbi, "closeRound", [BigInt(current.id)], onStep);
     }
+    // Writes are ABI-less calldata, so a revert would surface undecoded; simulate to get the named custom error.
+    await publicClient.simulateContract({ address: game, abi: gameAbi, functionName: "startRound", account: requireSession().account });
     onStep("Opening a new round");
     await write(game, gameAbi, "startRound", [], onStep);
     return latestRoundId();
@@ -212,11 +214,11 @@ export function createLiveClient(connectSession: () => Promise<Session>): GameCl
     },
 
     async getOutcomes(records): Promise<ReadonlyMap<number, Outcome>> {
-      const s = requireSession();
       const outcomes = new Map<number, Outcome>();
       const toDecrypt = records.filter((r) => r.entered && r.status === "settled");
       for (const r of records) if (!toDecrypt.includes(r)) outcomes.set(r.id, outcomeOf(r, null));
       if (toDecrypt.length === 0) return outcomes;
+      const s = requireSession();
       const entries = await publicClient.multicall({
         contracts: toDecrypt.map((r) => ({ address: game, abi: gameAbi, functionName: "getEntry", args: [BigInt(r.id), s.account] })),
         allowFailure: false,

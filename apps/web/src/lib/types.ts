@@ -53,9 +53,11 @@ export const MAX_STAKE = 10;
 
 const FRIENDLY_ERRORS: Record<string, string> = {
   OutsideWindow: "No round is open right now",
+  RoundStillActive: "A round is still in progress",
+  RoundAlreadyStarted: "This round has already started",
 };
 
-/** Name of a decoded custom error (viem walks the cause chain), or null when it is not one. */
+/** Name of a decoded custom error. Only simulated (ABI-aware) calls produce one; viem walks the cause chain. */
 function revertErrorName(error: unknown): string | null {
   if (!(error instanceof BaseError)) return null;
   const reverted = error.walk((e) => e instanceof ContractFunctionRevertedError);
@@ -63,10 +65,8 @@ function revertErrorName(error: unknown): string | null {
 }
 
 export function errorMessage(error: unknown): string {
-  const friendly = FRIENDLY_ERRORS[revertErrorName(error) ?? ""];
-  if (friendly) return friendly;
-  // Bundler/paymaster paths may only carry the error name in the text.
-  if (error instanceof Error && error.message.includes("OutsideWindow")) return FRIENDLY_ERRORS.OutsideWindow!;
+  const name = revertErrorName(error);
+  if (name && FRIENDLY_ERRORS[name]) return FRIENDLY_ERRORS[name];
   if (error instanceof Error) return error.message.split("\n")[0] ?? error.message;
   return String(error);
 }
