@@ -199,6 +199,62 @@ describe("MinorityRushGame", function () {
       expect(await game.latestRoundId()).to.eq(2n);
     });
 
+    it("finalizes and pays an older closing round after the next round started", async function () {
+      for (const p of [alice, bob, carol]) await fund(p);
+      await openWindow();
+      await game.startRound();
+      await enter(1, alice, SUN, 5);
+      await enter(1, bob, SUN, 3);
+      await enter(1, carol, MOON, 2);
+      const [, endTime] = await game.getRound(1);
+      await advanceTo(endTime);
+      await game.closeRound(1);
+
+      await openWindow();
+      await game.startRound();
+      expect(await game.latestRoundId()).to.eq(2n);
+
+      const [, , , , , handle] = await game.getRound(1);
+      const res = await fhevm.publicDecrypt([handle]);
+      const [moonWon] = ethers.AbiCoder.defaultAbiCoder().decode(["bool"], res.abiEncodedClearValues);
+      await game.finalizeRound(1, moonWon, res.decryptionProof);
+      expect(moonWon).to.eq(true);
+      expect((await game.getRound(1))[2]).to.eq(3n); // Settled
+      expect((await game.getRound(2))[2]).to.eq(1n); // Open
+
+      for (const p of [alice, bob, carol]) await game.connect(p).claim(1);
+      expect(await balanceOf(alice)).to.eq(15n);
+      expect(await balanceOf(bob)).to.eq(17n);
+      expect(await balanceOf(carol)).to.eq(22n);
+    });
+
+    it("an open round past its deadline blocks the next window until it is closed", async function () {
+      await openWindow();
+      await game.startRound();
+      const [, endTime] = await game.getRound(1);
+      await advanceTo(endTime);
+
+      await openWindow();
+      await expect(game.startRound()).to.be.revertedWithCustomError(game, "RoundStillActive");
+      await game.closeRound(1);
+      await game.startRound();
+      expect(await game.latestRoundId()).to.eq(2n);
+    });
+
+    it("opens the window exactly windowSeconds before the deadline", async function () {
+      // use the deadline after next so both target times are in the future
+      const end = await game.nextDeadline(await game.nextDeadline(await time.latest()));
+      const opens = end - BigInt(WINDOW);
+      await time.setNextBlockTimestamp(opens - 1n);
+      await expect(game.startRound()).to.be.revertedWithCustomError(game, "OutsideWindow");
+
+      await time.setNextBlockTimestamp(opens);
+      await game.startRound();
+      const [, endTime] = await game.getRound(1);
+      expect(endTime).to.eq(end);
+      expect(await time.latest()).to.eq(Number(opens));
+    });
+
     it("nextDeadline is strictly after the given time", async function () {
       const day0 = (Math.floor((await time.latest()) / DAY) + 1) * DAY;
       const first = BigInt(day0 + DEADLINES[0]);
