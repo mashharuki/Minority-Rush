@@ -1,3 +1,5 @@
+import { BaseError, ContractFunctionRevertedError } from "viem";
+
 export type Side = "sun" | "moon";
 
 export type RoundStatus = "none" | "open" | "closing" | "settled" | "cancelled";
@@ -38,12 +40,33 @@ export interface GameClient {
   settle(onStep: OnStep): Promise<void>;
   /** Claim the payout and decrypt your reward. */
   claim(onStep: OnStep): Promise<MyResult>;
+  /** The fixed daily schedule. null = free play (demo): rounds can be started at any time. */
+  getSchedule(): Promise<Schedule | null>;
+  /** The latest `count` rounds, oldest first. Ids are >= 1; `endTime` is unix seconds. */
+  getRecentRounds(count: number): Promise<RoundRecord[]>;
+  /** Won/lost/none for each record, keyed by round id. Only entered + settled rounds need a decryption. */
+  getOutcomes(records: readonly RoundRecord[]): Promise<ReadonlyMap<number, Outcome>>;
 }
 
 export const MIN_STAKE = 1;
 export const MAX_STAKE = 10;
 
+const FRIENDLY_ERRORS: Record<string, string> = {
+  OutsideWindow: "No round is open right now",
+};
+
+/** Name of a decoded custom error (viem walks the cause chain), or null when it is not one. */
+function revertErrorName(error: unknown): string | null {
+  if (!(error instanceof BaseError)) return null;
+  const reverted = error.walk((e) => e instanceof ContractFunctionRevertedError);
+  return reverted instanceof ContractFunctionRevertedError ? (reverted.data?.errorName ?? null) : null;
+}
+
 export function errorMessage(error: unknown): string {
+  const friendly = FRIENDLY_ERRORS[revertErrorName(error) ?? ""];
+  if (friendly) return friendly;
+  // Bundler/paymaster paths may only carry the error name in the text.
+  if (error instanceof Error && error.message.includes("OutsideWindow")) return FRIENDLY_ERRORS.OutsideWindow!;
   if (error instanceof Error) return error.message.split("\n")[0] ?? error.message;
   return String(error);
 }

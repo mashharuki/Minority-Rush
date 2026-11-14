@@ -14,10 +14,16 @@ import {
   type GameClient,
   type MyResult,
   type OnStep,
+  type Outcome,
+  type RoundRecord,
   type RoundState,
   type RoundStatus,
+  type Schedule,
   type Side,
 } from "./types";
+import { outcomeOf } from "./outcomes";
+
+const FAUCET_COOLDOWN_SECONDS = 86_400n;
 
 const chipAbi = abis.rushChipAbi as Abi;
 const gameAbi = abis.gameAbi as Abi;
@@ -79,9 +85,14 @@ export function createLiveClient(connectSession: () => Promise<Session>): GameCl
     };
   }
 
+  /** Past its deadline an Open round still blocks startRound, so close it first. A Closing round does not block. */
   const ensureRound = async (onStep: OnStep): Promise<number> => {
     const current = await getRound();
-    if (current.status === "open" || current.status === "closing") return current.id;
+    if (current.status === "open" && Date.now() < current.endTime) return current.id;
+    if (current.status === "open") {
+      onStep("Closing the previous round");
+      await write(game, gameAbi, "closeRound", [BigInt(current.id)], onStep);
+    }
     onStep("Opening a new round");
     await write(game, gameAbi, "startRound", [], onStep);
     return latestRoundId();
@@ -101,7 +112,9 @@ export function createLiveClient(connectSession: () => Promise<Session>): GameCl
       const observer = await read<Address>(chip, chipAbi, "observer", [s.account]);
       if (observer.toLowerCase() !== s.owner.toLowerCase()) calls.push(call(chip, chipAbi, "setObserver", [s.account, s.owner]));
     }
-    if ((await read<bigint>(chip, chipAbi, "lastFaucetAt", [s.account])) === 0n) calls.push(call(chip, chipAbi, "faucet", []));
+    const lastFaucet = await read<bigint>(chip, chipAbi, "lastFaucetAt", [s.account]);
+    const { timestamp } = await publicClient.getBlock();
+    if (lastFaucet === 0n || timestamp >= lastFaucet + FAUCET_COOLDOWN_SECONDS) calls.push(call(chip, chipAbi, "faucet", []));
     if (!(await read<boolean>(chip, chipAbi, "isOperator", [s.account, game]))) {
       const until = Math.floor(Date.now() / 1000) + OPERATOR_VALIDITY_SECONDS;
       calls.push(call(chip, chipAbi, "setOperator", [game, until]));
@@ -165,6 +178,57 @@ export function createLiveClient(connectSession: () => Promise<Session>): GameCl
       const moonWon = Boolean(Object.values(clearValues)[0]);
       onStep("Publishing the verified result");
       await write(game, gameAbi, "finalizeRound", [BigInt(round.id), moonWon, decryptionProof], onStep);
+    },
+
+    async getSchedule(): Promise<Schedule> {
+      const [deadlinesUtc, window] = await read<[readonly number[], number]>(game, gameAbi, "schedule");
+      return { deadlinesUtcSec: deadlinesUtc.map(Number), windowSec: Number(window) };
+    },
+
+    async getRecentRounds(count): Promise<RoundRecord[]> {
+      const latest = await latestRoundId();
+      const first = Math.max(1, latest - count + 1);
+      const ids = Array.from({ length: Math.max(0, latest - first + 1) }, (_, i) => first + i);
+      if (ids.length === 0) return [];
+      const player = session?.account;
+      const contracts = ids.flatMap((id) => [
+        { address: game, abi: gameAbi, functionName: "getRound", args: [BigInt(id)] },
+        ...(player ? [{ address: game, abi: gameAbi, functionName: "getEntry", args: [BigInt(id), player] }] : []),
+      ]);
+      const results = await publicClient.multicall({ contracts, allowFailure: false });
+      const stride = player ? 2 : 1;
+      return ids.map((id, i): RoundRecord => {
+        const [, endTime, status, , moonWon] = results[i * stride] as RoundTuple;
+        const entry = player ? (results[i * stride + 1] as [boolean, boolean, Hex, Hex, Hex]) : null;
+        const mapped = STATUS[Number(status)] ?? "none";
+        return {
+          id,
+          endTime: Number(endTime),
+          status: mapped,
+          entered: entry?.[0] ?? false,
+          winner: mapped === "settled" ? (moonWon ? "moon" : "sun") : null,
+        };
+      });
+    },
+
+    async getOutcomes(records): Promise<ReadonlyMap<number, Outcome>> {
+      const s = requireSession();
+      const outcomes = new Map<number, Outcome>();
+      const toDecrypt = records.filter((r) => r.entered && r.status === "settled");
+      for (const r of records) if (!toDecrypt.includes(r)) outcomes.set(r.id, outcomeOf(r, null));
+      if (toDecrypt.length === 0) return outcomes;
+      const entries = await publicClient.multicall({
+        contracts: toDecrypt.map((r) => ({ address: game, abi: gameAbi, functionName: "getEntry", args: [BigInt(r.id), s.account] })),
+        allowFailure: false,
+      });
+      const handles = entries.map((e) => (e as [boolean, boolean, Hex, Hex, Hex])[2]);
+      await sdk!.permits.grantPermit([game]);
+      const values = await sdk!.decryption.decryptValues(handles.map((h) => ({ encryptedValue: h, contractAddress: game })));
+      toDecrypt.forEach((r, i) => {
+        const choice = BigInt(values[handles[i]!] as bigint | boolean | string);
+        outcomes.set(r.id, outcomeOf(r, choice === 1n ? "moon" : "sun"));
+      });
+      return outcomes;
     },
 
     async claim(onStep): Promise<MyResult> {

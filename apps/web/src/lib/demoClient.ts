@@ -1,4 +1,5 @@
-import type { GameClient, MyResult, OnStep, RoundState, Side } from "./types";
+import { outcomeOf } from "./outcomes";
+import type { GameClient, MyResult, OnStep, Outcome, RoundRecord, RoundState, Side } from "./types";
 
 const DEMO_ROUND_MS = 15_000;
 const START_BALANCE = 20;
@@ -19,6 +20,16 @@ const randomSide = (): Side => (Math.random() < 0.5 ? "sun" : "moon");
 export function createDemoClient(): GameClient {
   let balance = START_BALANCE;
   let round: DemoRound | null = null;
+  /** Every round created so far (same objects as `round`, so winner/mine stay current). */
+  const history: DemoRound[] = [];
+
+  const toRecord = (r: DemoRound): RoundRecord => ({
+    id: r.id,
+    endTime: Math.floor(r.endTime / 1000),
+    status: r.winner ? "settled" : "open",
+    entered: r.mine !== null,
+    winner: r.winner,
+  });
 
   const toState = (): RoundState => {
     if (!round) {
@@ -71,6 +82,7 @@ export function createDemoClient(): GameClient {
           winner: null,
           claimed: false,
         };
+        history.push(round);
       }
       onStep("Sealing on-chain");
       await sleep(600);
@@ -86,6 +98,16 @@ export function createDemoClient(): GameClient {
       const sun = total("sun");
       const moon = total("moon");
       round.winner = sun === moon ? randomSide() : moon < sun ? "moon" : "sun";
+    },
+    async getSchedule() {
+      return null;
+    },
+    async getRecentRounds(count): Promise<RoundRecord[]> {
+      return history.slice(-Math.max(0, count)).map((r) => toRecord(r));
+    },
+    async getOutcomes(records): Promise<ReadonlyMap<number, Outcome>> {
+      const byId = new Map(history.map((r) => [r.id, r]));
+      return new Map(records.map((r) => [r.id, outcomeOf(r, byId.get(r.id)?.mine?.side ?? null)]));
     },
     async claim(onStep): Promise<MyResult> {
       if (!round?.winner || !round.mine) throw new Error("Nothing to claim");
