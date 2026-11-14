@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { jstDayKey, needsSettle } from '@/lib/schedule'
+import { jstDayKey } from '@/lib/schedule'
 import { shareText, type ShareResult } from '@/lib/share'
 import { slotOutcomesForDay } from '@/lib/shareGrid'
 import { computeStreak, participationDays } from '@/lib/streak'
-import { errorMessage, type GameClient, type Outcome, type RoundRecord, type RoundState, type Schedule } from '@/lib/types'
+import { errorMessage, type GameClient, type Outcome, type RoundRecord, type Schedule } from '@/lib/types'
 
 const TICK_MS = 1000
 const HISTORY_COUNT = 120
@@ -106,24 +106,33 @@ export function deriveDayRecord(schedule: Schedule | null, history: History, now
 
 type AutoSettleInput = {
   isActive: boolean
-  round: RoundState | null
-  nowMs: number
+  /** Round to settle next (from the history queue), or null. */
+  roundId: number | null
   isBlocked: boolean
-  settle: () => Promise<void>
+  /** Random wait before an attempt, so watching clients do not all send at the deadline. */
+  jitterMs: () => number
+  /** Resolves true on success; a failure is retried after SETTLE_RETRY_MS. */
+  settle: (roundId: number) => Promise<boolean>
 }
 
-/** Settles an expired round while `isActive`; a failed attempt waits before the next one. */
-export function useAutoSettle({ isActive, round, nowMs, isBlocked, settle }: AutoSettleInput): boolean {
+/** Settles `roundId` while `isActive`, after a random wait; a failed attempt waits before the next one. */
+export function useAutoSettle({ isActive, roundId, isBlocked, jitterMs, settle }: AutoSettleInput): boolean {
   const [isSettling, setIsSettling] = useState(false)
   const lastAttemptMs = useRef(0)
-  const shouldSettle = isActive && round !== null && needsSettle(round, nowMs)
   useEffect(() => {
-    if (!shouldSettle || isBlocked || isSettling) return
-    if (Date.now() - lastAttemptMs.current < SETTLE_RETRY_MS) return
-    lastAttemptMs.current = Date.now()
-    setIsSettling(true)
-    void settle().finally(() => setIsSettling(false))
-  }, [shouldSettle, isBlocked, isSettling, nowMs, settle])
+    if (!isActive || roundId === null || isBlocked || isSettling) return
+    const retryWaitMs = lastAttemptMs.current + SETTLE_RETRY_MS - Date.now()
+    const id = setTimeout(() => {
+      lastAttemptMs.current = Date.now()
+      setIsSettling(true)
+      void settle(roundId)
+        .then((isSettled) => {
+          if (isSettled) lastAttemptMs.current = 0
+        })
+        .finally(() => setIsSettling(false))
+    }, Math.max(jitterMs(), retryWaitMs))
+    return () => clearTimeout(id)
+  }, [isActive, roundId, isBlocked, isSettling, jitterMs, settle])
   return isSettling
 }
 

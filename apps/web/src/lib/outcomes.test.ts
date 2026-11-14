@@ -8,6 +8,7 @@ const record = (overrides: Partial<RoundRecord> = {}): RoundRecord => ({
   endTime: 1767225600,
   status: 'settled',
   entered: true,
+  claimed: false,
   winner: 'moon',
   ...overrides,
 })

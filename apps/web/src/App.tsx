@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   AppBar,
+  ChipsNotice,
   Disclaimer,
   ErrorBox,
   InstallHint,
@@ -18,6 +19,7 @@ import { createGameClient, type LoginKind } from '@/lib/client'
 import { env, isAaEnabled, isDeployed } from '@/lib/env'
 import { usePwa } from '@/lib/pwa'
 import { dayNumber, joinState, LAUNCH_DAY_KEY } from '@/lib/schedule'
+import { isJoinBlocked, roundToClaim, roundToSettle, SETTLE_JITTER_MAX_MS, settleJitterMs } from '@/lib/settleQueue'
 import { formatShareText } from '@/lib/shareGrid'
 import { errorMessage, MIN_PLAYERS, MIN_STAKE, type MyResult, type RoundState, type Side } from '@/lib/types'
 
@@ -43,8 +45,19 @@ function useRound(client: ReturnType<typeof createGameClient>, enabled: boolean)
   return { round, refresh }
 }
 
-const isResultReady = (round: RoundState | null): boolean =>
-  round !== null && round.hasEntered && !round.hasClaimed && (round.status === 'settled' || round.status === 'cancelled')
+type RunOptions = {
+  /** False for background work (auto-settle): failures are logged, never shown to the player. */
+  shouldReportError?: boolean
+  /** Operation name for the error log. */
+  label?: string
+}
+
+/** True when the round the player sealed in has passed its deadline (or a newer round already exists). */
+function isSealedRoundOver(round: RoundState | null, sealedRoundId: number | null, nowMs: number): boolean {
+  if (round === null || sealedRoundId === null || round.status === 'none') return false
+  if (round.id !== sealedRoundId) return true
+  return round.endTime <= nowMs
+}
 
 export default function App() {
   const clients = useMemo(() => ({ email: createGameClient('email'), wallet: createGameClient('wallet') }), [])
@@ -59,8 +72,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [result, setResult] = useState<MyResult | null>(null)
+  const [sealedRoundId, setSealedRoundId] = useState<number | null>(null)
+  const [revealedRoundId, setRevealedRoundId] = useState<number | null>(null)
+  /** Bumped after a settle or claim so the history (squares, claim queue) reloads in place. */
+  const [historyVersion, setHistoryVersion] = useState(0)
+  const [chipsAvailableAtMs, setChipsAvailableAtMs] = useState<number | null>(null)
   const [isBusy, setIsBusy] = useState(false)
-  const settling = useRef(false)
+  /** The sealed round this client already tried to settle automatically; later attempts are the player's "Retry". */
+  const autoSettledRoundId = useRef<number | null>(null)
   const pwa = usePwa()
 
   const isLocked = isBusy || pwa.isOffline
@@ -69,8 +88,14 @@ export default function App() {
   const secondsLeft = Math.max(0, Math.ceil(((round?.endTime ?? 0) - nowMs) / 1000))
   const scheduleState = useSchedule(client, address !== null)
   const schedule = scheduleState.isLoaded ? scheduleState.schedule : null
-  // Reload on entering home, and on reveal (every claim lands there).
-  const history = useHistory(client, address !== null && (screen === 'home' || screen === 'reveal') ? screen : null)
+  // Reload on entering home or reveal, when the latest round changes, and after every settle or claim.
+  const historyKey = screen === 'home' ? `home:${round?.id ?? 0}:${round?.status ?? 'none'}` : screen
+  const history = useHistory(
+    client,
+    address !== null && (screen === 'home' || screen === 'reveal') ? `${historyKey}:${historyVersion}` : null,
+  )
+  const settleTarget = roundToSettle(history.records, nowMs)
+  const claimTarget = roundToClaim(history.records)
   const { streak, recent } = useMemo(() => deriveDayRecord(schedule, history, nowMs), [schedule, history, nowMs])
   const shareMessage = formatShareText({
     dayNumber: dayNumber(Math.floor(nowMs / 1000), LAUNCH_DAY_KEY),
@@ -79,19 +104,32 @@ export default function App() {
   })
   const share = useShare(shareMessage)
 
-  const run = useCallback(async (task: () => Promise<void>) => {
+  const run = useCallback(async (task: () => Promise<void>, options: RunOptions = {}): Promise<boolean> => {
+    const { shouldReportError = true, label = 'action' } = options
     setIsBusy(true)
-    setError(null)
+    if (shouldReportError) setError(null)
     try {
       await task()
+      return true
     } catch (e) {
-      console.error('action failed', errorMessage(e))
-      setError(errorMessage(e))
+      console.error(`${label} failed`, errorMessage(e))
+      if (shouldReportError) setError(errorMessage(e))
+      return false
     } finally {
       setStep(null)
       setIsBusy(false)
     }
   }, [])
+
+  /** Background decrypt of the chip balance; unknown (null) on failure so the next pick screen asks again. */
+  const refreshBalance = useCallback(async (): Promise<void> => {
+    try {
+      setBalance(await client.readBalance())
+    } catch (e) {
+      console.error('refresh balance failed', errorMessage(e))
+      setBalance(null)
+    }
+  }, [client])
 
   const connect = (next: LoginKind) =>
     run(async () => {
@@ -110,66 +148,97 @@ export default function App() {
       setBalance(await client.readBalance())
     })
 
+  const getChips = () =>
+    run(async () => {
+      setStep('Checking your daily chips')
+      const chips = await client.claimDailyChips(setStep)
+      setChipsAvailableAtMs(chips.claimed ? null : chips.availableAtMs)
+      if (!chips.claimed) return
+      setStep('Decrypting your balance')
+      setBalance(await client.readBalance())
+    })
+
+  const openPick = () => {
+    setScreen('pick')
+    if (balance === null) void revealBalance()
+  }
+
   const seal = () =>
     run(async () => {
-      await client.enter(side, stake, setStep)
+      setSealedRoundId(await client.enter(side, stake, setStep))
       await refresh()
       setScreen('sealed')
+      void refreshBalance()
     })
 
   // Resume if the player already sealed a move in the open round.
   useEffect(() => {
     if (screen === 'pick' && round?.hasEntered && round.status !== 'settled' && round.status !== 'cancelled') {
+      setSealedRoundId(round.id)
       setScreen('sealed')
     }
   }, [screen, round])
 
-  const roundOver = round !== null && round.status !== 'none' && secondsLeft === 0
-  const canSettle = screen === 'sealed' && roundOver && round.hasEntered
+  const canSettle = screen === 'sealed' && isSealedRoundOver(round, sealedRoundId, nowMs)
+  const jitterMs = useCallback(() => settleJitterMs(client.mode === 'demo' ? 0 : SETTLE_JITTER_MAX_MS), [client])
 
-  const claimAndReveal = useCallback(async () => {
-    setResult(await client.claim(setStep))
-    setBalance(null)
-    setScreen('reveal')
-  }, [client])
+  const claimAndReveal = useCallback(
+    async (roundId: number) => {
+      setResult(await client.claim(roundId, setStep))
+      setRevealedRoundId(roundId)
+      setHistoryVersion((v) => v + 1)
+      setScreen('reveal')
+      void refreshBalance()
+    },
+    [client, refreshBalance],
+  )
 
   const settleAndClaim = useCallback(
     () =>
       run(async () => {
-        await client.settle(setStep)
-        await claimAndReveal()
+        if (sealedRoundId === null) return
+        await client.settle(sealedRoundId, setStep)
+        await claimAndReveal(sealedRoundId)
       }),
-    [client, run, claimAndReveal],
+    [client, run, claimAndReveal, sealedRoundId],
   )
 
-  const seeResult = () => run(claimAndReveal)
+  const seeResult = () => {
+    if (claimTarget !== null) void run(() => claimAndReveal(claimTarget))
+  }
 
-  const settleExpired = useCallback(
-    () =>
-      run(async () => {
-        await client.settle(setStep)
-        await refresh()
-      }),
+  // Errors here are background noise (another client usually settles first); they are logged and retried, not shown.
+  const settleFromHome = useCallback(
+    (roundId: number) =>
+      run(
+        async () => {
+          await client.settle(roundId, setStep)
+          setHistoryVersion((v) => v + 1)
+          await refresh()
+        },
+        { shouldReportError: false, label: `auto-settle round ${roundId}` },
+      ),
     [client, run, refresh],
   )
 
-  // On home, close and finalize an expired round so the next one can start.
+  // On home, settle expired rounds from the history, oldest first, so none is left unfinalized.
   const isSettling = useAutoSettle({
     isActive: screen === 'home',
-    round,
-    nowMs,
+    roundId: settleTarget,
     isBlocked: isBusy || pwa.isOffline,
-    settle: settleExpired,
+    jitterMs,
+    settle: settleFromHome,
   })
 
-  // Anyone can settle after the deadline; the first client to notice does it automatically.
+  // Anyone can settle after the deadline; after a random wait, this client does it unless another already has.
   useEffect(() => {
-    if (!canSettle || settling.current || isBusy || pwa.isOffline) return
-    settling.current = true
-    void settleAndClaim().finally(() => {
-      settling.current = false
-    })
-  }, [canSettle, round, isBusy, pwa.isOffline, settleAndClaim])
+    if (!canSettle || autoSettledRoundId.current === sealedRoundId || isBusy || pwa.isOffline) return
+    const id = setTimeout(() => {
+      autoSettledRoundId.current = sealedRoundId
+      void settleAndClaim()
+    }, jitterMs())
+    return () => clearTimeout(id)
+  }, [canSettle, sealedRoundId, isBusy, pwa.isOffline, settleAndClaim, jitterMs])
 
   const goHome = () => {
     setResult(null)
@@ -254,13 +323,13 @@ export default function App() {
                 minPlayers={MIN_PLAYERS}
                 streak={streak}
                 recent={recent}
-                hasUnseenResult={isResultReady(round)}
+                hasUnseenResult={claimTarget !== null}
                 isLocked={isLocked || !isScheduleReady}
-                isSettling={isSettling}
+                isSettling={isSettling || isJoinBlocked(history.records, nowMs)}
                 step={step}
                 error={error}
                 shareStatus={share.status}
-                onJoin={() => setScreen('pick')}
+                onJoin={openPick}
                 onShare={share.share}
                 onSeeResult={() => void seeResult()}
               />
@@ -293,7 +362,9 @@ export default function App() {
                 <button className="c--btn c--sealBtn" type="button" onClick={seal} disabled={isLocked || isOutOfChips}>
                   {isBusy ? (step ?? 'Working…') : `Seal ${side === 'sun' ? 'Sun' : 'Moon'} · ${stake} RUSH`}
                 </button>
-                <ErrorBox message={isOutOfChips ? "Not enough chips. Claim today's chips first." : null} />
+                {isOutOfChips && (
+                  <ChipsNotice availableAtMs={chipsAvailableAtMs} isLocked={isLocked} onGetChips={() => void getChips()} />
+                )}
                 <ErrorBox message={error} />
                 <div className="c--gasless">
                   <i /> {client.mode === 'demo'
@@ -348,7 +419,7 @@ export default function App() {
           {screen === 'reveal' && result && (
             <section className="c--screen c--reveal is--active">
               <StatusBar />
-              <AppBar right={<span className="c--barNote">Round {round?.id ?? ''} settled</span>} />
+              <AppBar right={<span className="c--barNote">Round {revealedRoundId ?? ''} settled</span>} />
               <div className="c--revealBody">
                 <div>
                   <p className="c--winLabel">{result.cancelled ? 'Not enough players' : 'The quieter side was'}</p>

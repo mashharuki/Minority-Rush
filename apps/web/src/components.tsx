@@ -35,6 +35,29 @@ export function ErrorBox({ message }: { message: string | null }) {
   )
 }
 
+const formatChipsTime = (ms: number): string =>
+  new Date(ms).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+
+type ChipsNoticeProps = {
+  /** When the faucet can be used next (unix ms), once known from a refused request. */
+  availableAtMs: number | null
+  isLocked: boolean
+  onGetChips: () => void
+}
+
+/** Shown on the pick screen while the known balance is below the minimum stake. */
+export function ChipsNotice({ availableAtMs, isLocked, onGetChips }: ChipsNoticeProps): ReactNode {
+  return (
+    <div className="c--chipsNotice" role="status">
+      <p>Not enough chips to stake.</p>
+      {availableAtMs !== null && <p>Today's chips are already claimed. More from {formatChipsTime(availableAtMs)}.</p>}
+      <button className="c--btn is--secondary" type="button" onClick={onGetChips} disabled={isLocked}>
+        Get today's chips
+      </button>
+    </div>
+  )
+}
+
 export function Timer({ seconds }: { seconds: number }) {
   return (
     <div className="c--timer" role="timer" aria-label={`${seconds} seconds remaining`}>

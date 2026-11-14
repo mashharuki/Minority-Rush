@@ -10,6 +10,7 @@ const rec = (id: number, endTime: number, entered: boolean): RoundRecord => ({
   endTime,
   status: 'settled',
   entered,
+  claimed: false,
   winner: 'sun',
 })
 

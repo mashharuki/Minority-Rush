@@ -821,6 +821,19 @@
           line-height: 1.45;
           word-break: break-word;
         }
+        .c--chipsNotice {
+          display: grid;
+          gap: 8px;
+          margin-top: 12px;
+          padding: 12px;
+          border-radius: 10px;
+          background: rgba(238, 111, 104, 0.18);
+          font-size: 0.72rem;
+          line-height: 1.45;
+        }
+        .c--chipsNotice p {
+          margin: 0;
+        }
         .c--btn:disabled {
           opacity: 0.55;
           cursor: not-allowed;
