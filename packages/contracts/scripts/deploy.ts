@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { ethers, network } from "hardhat";
 
-const ROUND_DURATION_SECONDS = 90;
+import { DEADLINES_UTC, MAX_PLAYERS, MIN_PLAYERS, WINDOW_SECONDS } from "./schedule.config";
 
 async function main(): Promise<void> {
   const [deployer] = await ethers.getSigners();
@@ -20,7 +20,13 @@ async function main(): Promise<void> {
   await chip.waitForDeployment();
   const chipAddress = await chip.getAddress();
 
-  const game = await (await ethers.getContractFactory("MinorityRushGame")).deploy(chipAddress, ROUND_DURATION_SECONDS);
+  const game = await (await ethers.getContractFactory("MinorityRushGame")).deploy(
+    chipAddress,
+    [...DEADLINES_UTC],
+    WINDOW_SECONDS,
+    MIN_PLAYERS,
+    MAX_PLAYERS,
+  );
   await game.waitForDeployment();
   const gameAddress = await game.getAddress();
 
