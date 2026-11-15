@@ -18,6 +18,35 @@ pools and always pick the minority, so the game only works because the state sta
 | `apps/sponsor-api` | Vercel function: Privy-authenticated, validated JSON-RPC proxy to Pimlico (gas sponsorship) |
 | `docs/` | Concept doc and UI mockup |
 
+## Architecture
+
+![System architecture](docs/architecture.png)
+
+Editable source: [docs/architecture.drawio](docs/architecture.drawio) (open in draw.io; re-export with
+`drawio -x -f png -s 2 -b 20 -o docs/architecture.png docs/architecture.drawio`).
+
+- **Web app (`apps/web`)** encrypts the side and stake in the browser with `@zama-fhe/sdk` (input proofs and decryption
+  go through the Zama Relayer) and signs with either an injected wallet or a Privy embedded wallet.
+- **Gasless play:** the Privy wallet owns an ERC-4337 smart account. The web app sends JSON-RPC to
+  `apps/sponsor-api`, which verifies the Privy token, validates the request and forwards it to Pimlico (bundler and
+  paymaster). The Pimlico key never reaches the browser.
+- **Contracts (Sepolia):** `MinorityRushGame` does the encrypted comparison through the FHEVM host contracts and takes
+  stakes from `RushChip` (ERC-7984) with `confidentialTransferFrom`.
+- Reads go straight to a Sepolia RPC. With no deployed addresses the web app falls back to an offline demo client.
+
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Confidential compute | Zama Protocol (FHEVM): `@fhevm/solidity`, `@zama-fhe/relayer-sdk`, OpenZeppelin `confidential-contracts` (ERC-7984) |
+| Contracts | Solidity 0.8.27 (EVM cancun), Hardhat 2 + `@fhevm/hardhat-plugin`, ethers 6, TypeChain, Mocha / Chai, solhint |
+| Web | React 19, Vite 8, TypeScript 7, viem 2, `@zama-fhe/sdk`, zod, vite-plugin-pwa (Workbox), Vitest, oxlint |
+| Auth and gasless | Privy (`@privy-io/react-auth`, `@privy-io/node`), ERC-4337 via `permissionless`, Pimlico bundler / paymaster |
+| Backend | Vercel Function (`apps/sponsor-api`, TypeScript, zod, Vitest) |
+| Hosting | Vercel (web and sponsor API as separate projects) |
+| Chain | Ethereum Sepolia (11155111); local development uses the Hardhat mock FHEVM |
+| Tooling | bun workspaces (Node 20+; 24 used locally), draw.io CLI for the architecture diagram |
+
 ## Round flow
 
 Rounds follow a fixed daily schedule with four deadlines (UTC seconds-of-day `[10800, 32400, 43200, 50400]`, i.e.
@@ -39,11 +68,39 @@ the daily streak (one freeze earned every 7th consecutive day, at most one store
 
 ## Run it
 
+Prerequisites: [bun](https://bun.sh) and Node.js 20 or newer.
+
+**1. Local, no keys needed**
+
 ```bash
 bun install --cwd packages/contracts && bun install --cwd apps/web
 bun run test            # 22 contract tests on the mock FHEVM
 bun run dev             # web app; runs an offline demo until contracts are deployed
 ```
+
+Optional full-round check on a local node (two terminals):
+
+```bash
+cd packages/contracts && bunx hardhat node        # terminal A
+cd packages/contracts && bun run smoke:local      # terminal B, expects "OK: full round verified"
+```
+
+**2. Against Sepolia (live client)**
+
+The web app switches to the live client once `apps/web/src/contracts/deployment.sepolia.json` holds non-zero
+addresses (it does after `deploy:sepolia`). Set these in `apps/web/.env.local` (see `apps/web/.env.example`):
+`VITE_SEPOLIA_RPC_URL`, plus `VITE_PRIVY_APP_ID`, `VITE_PRIVY_CLIENT_ID` and `VITE_SPONSOR_API_URL` for email login
+and gasless play. Without the Privy values you can still play with an injected wallet (needs Sepolia ETH for gas).
+
+Rounds can only be started inside the 90-minute window before a deadline, so run the smoke test then:
+
+```bash
+cd packages/contracts && bun run smoke:sepolia   # needs PRIVATE_KEY, PRIVATE_KEY_2, PRIVATE_KEY_3 funded with Sepolia ETH
+```
+
+**3. Sponsor API (gasless play)** runs as a Vercel Function and needs `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`,
+`PIMLICO_API_KEY`, `PIMLICO_SPONSORSHIP_POLICY_ID`, `CHIP_ADDRESS`, `GAME_ADDRESS` and `ALLOWED_WEB_ORIGIN`. See
+[docs/deployment.md](docs/deployment.md#6-publish-the-web-app-vercel) for deploying it and the web app.
 
 Full step-by-step (keys, deploy, smoke test, verification, checklist): [docs/deployment.md](docs/deployment.md).
 
