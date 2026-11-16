@@ -89,6 +89,10 @@ contract IndianPokerGame is ZamaEthereumConfig {
     event Acted(uint256 indexed id, uint8 seat, Action action);
     /// @dev loserSeat is 2 for a showdown (nobody folded).
     event Ended(uint256 indexed id, bool showdown, uint8 loserSeat);
+    event FundsConfirmed(uint256 indexed id, bool ok);
+    /// @dev winnerSeat: 0 = A, 1 = B.
+    event Settled(uint256 indexed id, uint8 winnerSeat);
+    event Voided(uint256 indexed id);
 
     error TableFull();
     error NotOpen();
@@ -100,6 +104,9 @@ contract IndianPokerGame is ZamaEthereumConfig {
     error NotYourTurn();
     error IllegalAction();
     error DeadlineNotReached();
+    error FundsNotConfirmed();
+    error AlreadyConfirmed();
+    error NotEnded();
 
     constructor(IERC7984 chip_) {
         chip = chip_;
@@ -146,8 +153,7 @@ contract IndianPokerGame is ZamaEthereumConfig {
         if (t.phase != Phase.Open) revert NotOpen();
         if (msg.sender != t.a) revert NotCreator();
         t.phase = Phase.Cancelled;
-        FHE.allowTransient(t.paidA, address(chip));
-        chip.confidentialTransfer(t.a, t.paidA);
+        _refund(t.a, t.paidA);
         emit TableCancelled(id);
     }
 
@@ -187,6 +193,44 @@ contract IndianPokerGame is ZamaEthereumConfig {
         if (t.phase != Phase.Betting) revert NotBetting();
         if (block.timestamp <= t.turnDeadline) revert DeadlineNotReached();
         _end(id, t, false, t.turn);
+    }
+
+    // ───────────────────────── Settlement ─────────────────────────
+
+    /// @notice Publishes whether both deposits were paid in full (public decryption proof of the two flags).
+    ///         Runs in the background while the hand is played. A missing deposit voids the hand.
+    function confirmFunds(uint256 id, bool okA, bool okB, bytes calldata proof) external {
+        Table storage t = _tables[id];
+        if (t.phase != Phase.Betting && t.phase != Phase.Ended) revert NotBetting();
+        if (t.fundsConfirmed) revert AlreadyConfirmed();
+
+        bytes32[] memory handles = new bytes32[](2);
+        handles[0] = FHE.toBytes32(t.okA);
+        handles[1] = FHE.toBytes32(t.okB);
+        FHE.checkSignatures(handles, abi.encode(okA, okB), proof);
+        t.fundsConfirmed = true;
+        emit FundsConfirmed(id, okA && okB);
+
+        if (!(okA && okB)) {
+            t.phase = Phase.Voided;
+            _refund(t.a, t.paidA);
+            _refund(t.b, t.paidB);
+            emit Voided(id);
+            return;
+        }
+        if (t.phase == Phase.Ended && !t.showdown) _settle(id, t, t.loserSeat == 1);
+    }
+
+    /// @notice Settles a showdown with the public-decryption proof of the single `aWins` bit.
+    function finalizeShowdown(uint256 id, bool aWins, bytes calldata proof) external {
+        Table storage t = _tables[id];
+        if (t.phase != Phase.Ended || !t.showdown) revert NotEnded();
+        if (!t.fundsConfirmed) revert FundsNotConfirmed();
+
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(t.aWins);
+        FHE.checkSignatures(handles, abi.encode(aWins), proof);
+        _settle(id, t, aWins);
     }
 
     // ───────────────────────── Views ─────────────────────────
@@ -261,6 +305,30 @@ contract IndianPokerGame is ZamaEthereumConfig {
             FHE.makePubliclyDecryptable(t.aWins);
         }
         emit Ended(id, showdown, loserSeat);
+        if (!showdown && t.fundsConfirmed) _settle(id, t, loserSeat == 1);
+    }
+
+    /// @dev Pays out in plain units decided by the public betting record: each player gets back the unused part
+    ///      of the deposit, the winner also gets everything that was put in the pot.
+    function _settle(uint256 id, Table storage t, bool aWon) private {
+        t.phase = Phase.Settled;
+        t.aWon = aWon;
+        uint64 pot = uint64(t.contribA) + uint64(t.contribB);
+        _pay(t.a, (DEPOSIT - t.contribA) + (aWon ? pot : 0));
+        _pay(t.b, (DEPOSIT - t.contribB) + (aWon ? 0 : pot));
+        emit Settled(id, aWon ? 0 : 1);
+    }
+
+    function _pay(address to, uint64 units) private {
+        if (units == 0) return;
+        euint64 amount = FHE.asEuint64(units);
+        FHE.allowTransient(amount, address(chip));
+        chip.confidentialTransfer(to, amount);
+    }
+
+    function _refund(address to, euint64 paid) private {
+        FHE.allowTransient(paid, address(chip));
+        chip.confidentialTransfer(to, paid);
     }
 
     /// @dev Pulls DEPOSIT chips. ERC-7984 moves 0 instead of reverting on a short balance, so we keep the amount

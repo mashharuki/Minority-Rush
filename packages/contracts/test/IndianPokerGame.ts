@@ -283,3 +283,165 @@ describe("IndianPokerGame betting", function () {
     await expect(fhevm.publicDecrypt([hB])).to.be.rejected;
   });
 });
+
+const PHASE_SETTLED = 4;
+const PHASE_VOIDED = 5;
+
+const toBool = (v: unknown): boolean => v === true || v === 1n;
+
+describe("IndianPokerGame settlement", function () {
+  let f: Fixture;
+  let id: bigint;
+
+  const act = (who: HardhatEthersSigner, action: number) => f.game.connect(who).act(id, action);
+
+  /** Public-decrypts the two funds flags and submits them. Returns the flags. */
+  async function confirm(flags?: { okA: boolean; okB: boolean }): Promise<{ okA: boolean; okB: boolean }> {
+    const [hA, hB] = await f.game.getFundsHandles(id);
+    const res = await fhevm.publicDecrypt([hA, hB]);
+    const okA = flags?.okA ?? toBool(res.clearValues[hA as `0x${string}`]);
+    const okB = flags?.okB ?? toBool(res.clearValues[hB as `0x${string}`]);
+    await f.game.confirmFunds(id, okA, okB, res.decryptionProof);
+    return { okA, okB };
+  }
+
+  async function showdownProof(): Promise<{ aWins: boolean; proof: string }> {
+    const h = await f.game.getShowdownHandle(id);
+    const res = await fhevm.publicDecrypt([h]);
+    return { aWins: toBool(res.clearValues[h as `0x${string}`]), proof: res.decryptionProof };
+  }
+
+  beforeEach(async function () {
+    if (!fhevm.isMock) this.skip();
+    f = await deployAll();
+    await fund(f, f.alice);
+  });
+
+  describe("with funded players", function () {
+    beforeEach(async function () {
+      await fund(f, f.bob);
+      id = await openAndJoin(f);
+    });
+
+    it("should pay the winner the pot when a called showdown is finalized", async function () {
+      await act(f.alice, BET);
+      await act(f.bob, CALL);
+      await confirm();
+      const { aWins, proof } = await showdownProof();
+      await expect(f.game.finalizeShowdown(id, aWins, proof)).to.emit(f.game, "Settled").withArgs(id, aWins ? 0 : 1);
+      expect((await f.game.getTable(id)).phase).to.eq(PHASE_SETTLED);
+      expect(await balanceOf(f, f.alice)).to.eq(aWins ? 22n : 18n);
+      expect(await balanceOf(f, f.bob)).to.eq(aWins ? 18n : 22n);
+    });
+
+    it("should pay one chip net when both players check and the showdown is finalized", async function () {
+      await act(f.alice, CHECK);
+      await act(f.bob, CHECK);
+      await confirm();
+      const { aWins, proof } = await showdownProof();
+      await f.game.finalizeShowdown(id, aWins, proof);
+      expect(await balanceOf(f, f.alice)).to.eq(aWins ? 21n : 19n);
+      expect(await balanceOf(f, f.bob)).to.eq(aWins ? 19n : 21n);
+    });
+
+    it("should settle a fold in the act transaction when funds are already confirmed", async function () {
+      await confirm();
+      await act(f.alice, BET);
+      await expect(act(f.bob, FOLD)).to.emit(f.game, "Settled").withArgs(id, 0);
+      const t = await f.game.getTable(id);
+      expect(t.phase).to.eq(PHASE_SETTLED);
+      expect(t.aWon).to.eq(true);
+      expect(await balanceOf(f, f.alice)).to.eq(21n);
+      expect(await balanceOf(f, f.bob)).to.eq(19n);
+    });
+
+    it("should settle a fold when confirmFunds arrives after the fold", async function () {
+      await act(f.alice, BET);
+      await act(f.bob, FOLD);
+      expect((await f.game.getTable(id)).phase).to.eq(PHASE_ENDED);
+      await confirm();
+      expect((await f.game.getTable(id)).phase).to.eq(PHASE_SETTLED);
+      expect(await balanceOf(f, f.alice)).to.eq(21n);
+      expect(await balanceOf(f, f.bob)).to.eq(19n);
+    });
+
+    it("should settle a timeout in the claimTimeout transaction when funds are already confirmed", async function () {
+      await confirm();
+      await time.increase(46);
+      await f.game.connect(f.carol).claimTimeout(id);
+      expect((await f.game.getTable(id)).phase).to.eq(PHASE_SETTLED);
+      expect(await balanceOf(f, f.alice)).to.eq(19n);
+      expect(await balanceOf(f, f.bob)).to.eq(21n);
+    });
+
+    it("should revert FundsNotConfirmed when finalizing before confirmFunds", async function () {
+      await act(f.alice, CHECK);
+      await act(f.bob, CHECK);
+      const { aWins, proof } = await showdownProof();
+      await expect(f.game.finalizeShowdown(id, aWins, proof)).to.be.revertedWithCustomError(
+        f.game,
+        "FundsNotConfirmed",
+      );
+    });
+
+    it("should revert when a forged result is submitted", async function () {
+      await act(f.alice, CHECK);
+      await act(f.bob, CHECK);
+      await confirm();
+      const { aWins, proof } = await showdownProof();
+      await expect(f.game.finalizeShowdown(id, !aWins, proof)).to.be.reverted;
+    });
+
+    it("should revert NotEnded when finalizeShowdown is replayed", async function () {
+      await act(f.alice, CHECK);
+      await act(f.bob, CHECK);
+      await confirm();
+      const { aWins, proof } = await showdownProof();
+      await f.game.finalizeShowdown(id, aWins, proof);
+      await expect(f.game.finalizeShowdown(id, aWins, proof)).to.be.revertedWithCustomError(f.game, "NotEnded");
+    });
+
+    it("should revert NotEnded when finalizeShowdown is called after a fold", async function () {
+      await confirm();
+      await act(f.alice, BET);
+      await act(f.bob, FOLD);
+      await expect(f.game.finalizeShowdown(id, true, "0x")).to.be.revertedWithCustomError(f.game, "NotEnded");
+    });
+
+    it("should revert AlreadyConfirmed when confirmFunds is submitted twice", async function () {
+      await confirm();
+      await expect(confirm()).to.be.revertedWithCustomError(f.game, "AlreadyConfirmed");
+    });
+  });
+
+  describe("with an underfunded player", function () {
+    beforeEach(async function () {
+      const poor = f.bob;
+      await f.chip.mint(poor.address, 1); // 1 chip < DEPOSIT 2: the transfer moves 0
+      await f.chip.connect(poor).setOperator(f.gameAddr, FAR_FUTURE);
+      await f.game.connect(f.alice).createTable(ANYONE);
+      id = await f.game.tableCount();
+      await f.game.connect(poor).joinTable(id);
+    });
+
+    it("should void the hand and refund what was paid when a deposit was missing", async function () {
+      await fund(f, f.carol); // unrelated player proves nothing else moves
+      const flags = await confirm();
+      expect(flags).to.deep.eq({ okA: true, okB: false });
+      expect((await f.game.getTable(id)).phase).to.eq(PHASE_VOIDED);
+      expect(await balanceOf(f, f.alice)).to.eq(20n);
+      expect(await balanceOf(f, f.bob)).to.eq(1n);
+    });
+
+    it("should revert when confirmFunds flags are forged", async function () {
+      const [hA, hB] = await f.game.getFundsHandles(id);
+      const res = await fhevm.publicDecrypt([hA, hB]);
+      await expect(f.game.confirmFunds(id, true, true, res.decryptionProof)).to.be.reverted;
+    });
+
+    it("should revert NotBetting when acting after the hand was voided", async function () {
+      await confirm();
+      await expect(act(f.alice, CHECK)).to.be.revertedWithCustomError(f.game, "NotBetting");
+    });
+  });
+});
