@@ -7,6 +7,9 @@ import App from './poker/PokerApp.tsx'
 import { isAaEnabled } from './lib/env'
 import { PrivyAuthProvider } from './lib/privyBridge'
 import { PrivyBoundary } from './lib/PrivyBoundary'
+import { installStaleBuildRecovery } from './lib/staleBuild'
+
+installStaleBuildRecovery()
 
 const app = <App />
 
