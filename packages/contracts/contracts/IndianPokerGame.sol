@@ -45,6 +45,8 @@ contract IndianPokerGame is ZamaEthereumConfig {
         uint8 contribB;
         bool fundsConfirmed;
         bool aWon;
+        bool showdown; // true: decided by card comparison, false: someone folded or timed out
+        uint8 loserSeat; // meaningful for a fold/timeout end (0 = A, 1 = B)
         Action[] history;
         euint8 cardA;
         euint8 cardB;
@@ -52,6 +54,23 @@ contract IndianPokerGame is ZamaEthereumConfig {
         euint64 paidB;
         ebool okA;
         ebool okB;
+        ebool aWins;
+    }
+
+    /// @dev Flat, ABI-friendly snapshot of a table (everything public).
+    struct TableInfo {
+        address a;
+        address b;
+        Phase phase;
+        uint8 turn;
+        uint64 turnDeadline;
+        uint8 contribA;
+        uint8 contribB;
+        Action[] history;
+        bool fundsConfirmed;
+        bool aWon;
+        bool showdown;
+        uint8 loserSeat;
     }
 
     uint64 public constant ANTE = 1;
@@ -67,6 +86,9 @@ contract IndianPokerGame is ZamaEthereumConfig {
     event TableCreated(uint256 indexed id, address indexed a, address opponent);
     event TableJoined(uint256 indexed id, address indexed b);
     event TableCancelled(uint256 indexed id);
+    event Acted(uint256 indexed id, uint8 seat, Action action);
+    /// @dev loserSeat is 2 for a showdown (nobody folded).
+    event Ended(uint256 indexed id, bool showdown, uint8 loserSeat);
 
     error TableFull();
     error NotOpen();
@@ -74,6 +96,10 @@ contract IndianPokerGame is ZamaEthereumConfig {
     error NotInvited();
     error SelfJoin();
     error GameNotOperator();
+    error NotBetting();
+    error NotYourTurn();
+    error IllegalAction();
+    error DeadlineNotReached();
 
     constructor(IERC7984 chip_) {
         chip = chip_;
@@ -107,6 +133,8 @@ contract IndianPokerGame is ZamaEthereumConfig {
         _deal(t);
 
         t.phase = Phase.Betting;
+        t.contribA = uint8(ANTE);
+        t.contribB = uint8(ANTE);
         t.turn = 0;
         t.turnDeadline = uint64(block.timestamp) + TURN_SECONDS;
         emit TableJoined(id, msg.sender);
@@ -121,6 +149,44 @@ contract IndianPokerGame is ZamaEthereumConfig {
         FHE.allowTransient(t.paidA, address(chip));
         chip.confidentialTransfer(t.a, t.paidA);
         emit TableCancelled(id);
+    }
+
+    // ───────────────────────── Betting ─────────────────────────
+
+    /// @notice Kuhn betting, no raises. A: check|bet. After a bet: call|fold. After A checks, B: check|bet,
+    ///         and if B bets, A: call|fold. A fold ends the hand; a call or check-check goes to showdown.
+    function act(uint256 id, Action action) external {
+        Table storage t = _tables[id];
+        if (t.phase != Phase.Betting) revert NotBetting();
+        uint8 seat = msg.sender == t.a ? 0 : (msg.sender == t.b ? 1 : 2);
+        if (seat != t.turn) revert NotYourTurn();
+        if (!_isLegal(t.history, action)) revert IllegalAction();
+
+        bool isCheckCheck = action == Action.Check && t.history.length == 1 && t.history[0] == Action.Check;
+        t.history.push(action);
+        emit Acted(id, seat, action);
+
+        if (action == Action.Bet || action == Action.Call) {
+            if (seat == 0) t.contribA += uint8(BET);
+            else t.contribB += uint8(BET);
+        }
+
+        if (action == Action.Fold) {
+            _end(id, t, false, seat);
+        } else if (action == Action.Call || isCheckCheck) {
+            _end(id, t, true, 2);
+        } else {
+            t.turn = 1 - t.turn;
+            t.turnDeadline = uint64(block.timestamp) + TURN_SECONDS;
+        }
+    }
+
+    /// @notice Anyone may end the hand once the player on turn ran out of time: that player loses.
+    function claimTimeout(uint256 id) external {
+        Table storage t = _tables[id];
+        if (t.phase != Phase.Betting) revert NotBetting();
+        if (block.timestamp <= t.turnDeadline) revert DeadlineNotReached();
+        _end(id, t, false, t.turn);
     }
 
     // ───────────────────────── Views ─────────────────────────
@@ -139,37 +205,22 @@ contract IndianPokerGame is ZamaEthereumConfig {
         for (uint256 i = 0; i < n; i++) ids[i] = tmp[i];
     }
 
-    function getTable(
-        uint256 id
-    )
-        external
-        view
-        returns (
-            address a,
-            address b,
-            Phase phase,
-            uint8 turn,
-            uint64 turnDeadline,
-            uint8 contribA,
-            uint8 contribB,
-            Action[] memory history,
-            bool fundsConfirmed,
-            bool aWon
-        )
-    {
+    function getTable(uint256 id) external view returns (TableInfo memory info) {
         Table storage t = _tables[id];
-        return (
-            t.a,
-            t.b,
-            t.phase,
-            t.turn,
-            t.turnDeadline,
-            t.contribA,
-            t.contribB,
-            t.history,
-            t.fundsConfirmed,
-            t.aWon
-        );
+        info = TableInfo({
+            a: t.a,
+            b: t.b,
+            phase: t.phase,
+            turn: t.turn,
+            turnDeadline: t.turnDeadline,
+            contribA: t.contribA,
+            contribB: t.contribB,
+            history: t.history,
+            fundsConfirmed: t.fundsConfirmed,
+            aWon: t.aWon,
+            showdown: t.showdown,
+            loserSeat: t.loserSeat
+        });
     }
 
     /// @notice Handles are public; only ACL-allowed accounts can decrypt them.
@@ -177,11 +228,40 @@ contract IndianPokerGame is ZamaEthereumConfig {
         return (_tables[id].cardA, _tables[id].cardB);
     }
 
+    function getShowdownHandle(uint256 id) external view returns (ebool aWins) {
+        return _tables[id].aWins;
+    }
+
     function getFundsHandles(uint256 id) external view returns (ebool okA, ebool okB) {
         return (_tables[id].okA, _tables[id].okB);
     }
 
     // ───────────────────────── Internals ─────────────────────────
+
+    /// @dev Legal moves by betting history (see `act`).
+    function _isLegal(Action[] storage h, Action action) private view returns (bool) {
+        uint256 n = h.length;
+        if (n == 0) return action == Action.Check || action == Action.Bet;
+        if (n == 1) {
+            if (h[0] == Action.Bet) return action == Action.Call || action == Action.Fold;
+            return action == Action.Check || action == Action.Bet; // h[0] == Check
+        }
+        if (n == 2) return action == Action.Call || action == Action.Fold; // Check, Bet
+        return false;
+    }
+
+    /// @dev Betting is over. A showdown compares the cards under FHE and publishes only that one bit.
+    function _end(uint256 id, Table storage t, bool showdown, uint8 loserSeat) private {
+        t.phase = Phase.Ended;
+        t.showdown = showdown;
+        t.loserSeat = loserSeat;
+        if (showdown) {
+            t.aWins = FHE.gt(t.cardA, t.cardB);
+            FHE.allowThis(t.aWins);
+            FHE.makePubliclyDecryptable(t.aWins);
+        }
+        emit Ended(id, showdown, loserSeat);
+    }
 
     /// @dev Pulls DEPOSIT chips. ERC-7984 moves 0 instead of reverting on a short balance, so we keep the amount
     ///      actually transferred and an encrypted "paid in full" flag (decrypted publicly after the deal).
