@@ -1,3 +1,5 @@
+> **Historical document.** This is the concept of the first game (Minority Rush), which was replaced by Blind Bluff (heads-up Indian poker) for Season 5. See `README.md` and `docs/superpowers/specs/2026-11-16-indian-poker-design.md`.
+
 # Minority Rush — Game Concept
 
 ## 1. 概要

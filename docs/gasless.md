@@ -16,13 +16,13 @@ Simple Smart Account (the on-chain player, msg.sender)
    v
 apps/sponsor-api  --(verifies Privy token, validates the call)-->  Pimlico bundler + paymaster
    v
-EntryPoint v0.7 --> RushChip / MinorityRushGame (Sepolia)
+EntryPoint v0.7 --> RushChip / IndianPokerGame (Sepolia)
 ```
 
 **Why an observer?** The game and chip grant FHE access (ACL) to the smart account, but the browser can only sign
 decryption permits with the *owner EOA*. `RushChip` therefore inherits OpenZeppelin `ERC7984ObserverAccess`:
 the smart account registers its owner as `observer`, which gets permanent access to its balance/transfer amounts, and
-`MinorityRushGame` additionally grants that observer access to the player's choice, stake and reward. Observers are
+`IndianPokerGame` additionally grants that observer access to the opponent's card the player is allowed to see. Observers are
 optional: plain EOA players (injected wallet) skip this.
 
 First tap ("Play with email") sends **one sponsored UserOperation** that deploys the account and batches

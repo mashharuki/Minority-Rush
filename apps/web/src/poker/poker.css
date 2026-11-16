@@ -1,0 +1,205 @@
+@layer lism-custom {
+  .p--body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 16px 24px 24px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .p--h {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .p--sub {
+    margin: 4px 0 0;
+    font-size: 14px;
+    line-height: 1.7;
+    opacity: 0.7;
+  }
+  .p--stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .p--row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .p--tableList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .p--tableItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border: 1px solid var(--white-line);
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .p--tableItem .c--btn {
+    width: auto;
+    min-height: 36px;
+    padding: 0 16px;
+  }
+
+  .p--felt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 16px;
+    border-radius: 16px;
+    background: var(--night-soft);
+    color: #fff;
+  }
+  .p--seat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .p--seatLabel {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .p--card {
+    position: relative;
+    width: 96px;
+    height: 136px;
+    perspective: 600px;
+  }
+  .p--cardInner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .p--card.is--face .p--cardInner {
+    transform: rotateY(180deg);
+  }
+  .p--cardSide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    backface-visibility: hidden;
+  }
+  .p--cardBack {
+    background: var(--night-soft);
+    border: 1px solid var(--white-line);
+  }
+  .p--cardBack::after {
+    content: "";
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--moon-soft);
+    opacity: 0.6;
+  }
+  .p--cardFront {
+    transform: rotateY(180deg);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 48px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .p--pot {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .p--turn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+  }
+  .p--timer {
+    min-width: 40px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .p--timer.is--low {
+    background: var(--red);
+    color: #fff;
+  }
+  .p--actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .p--history {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .p--history li {
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--white-line);
+  }
+  .p--busy {
+    min-height: 20px;
+    font-size: 13px;
+    opacity: 0.7;
+  }
+  .p--result {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--white-line);
+  }
+  .p--result strong {
+    font-family: var(--display);
+    font-size: 20px;
+  }
+  .p--result p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .p--cardInner {
+      transition: none;
+    }
+  }
+}
+@layer lism-custom {
+  .p--h3 { font-size: 16px; }
+  .c--btn.p--small { width: auto; min-height: 36px; padding: 0 16px; white-space: nowrap; }
+  .p--link {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--white-line);
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+  }
+}

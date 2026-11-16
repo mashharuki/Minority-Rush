@@ -1,143 +1,97 @@
-# Minority Rush
+# Blind Bluff
 
-> One choice. One secret stake. Outsmart the crowd.
+> Your card is shown to your opponent and hidden from you. Read their bets, not your hand.
 
-Pick **Sun** or **Moon** and stake chips. Both are encrypted on-chain with the Zama Protocol (FHEVM). After the
-deadline the contract compares the encrypted pools, and the side with the **smaller total stake wins 2× its stake**.
-A tie is broken by on-chain encrypted randomness (`FHE.randEbool`). On a transparent chain, late joiners could see the
-pools and always pick the minority, so the game only works because the state stays encrypted.
+Heads-up Indian poker on the **Zama Protocol (FHEVM)**. Each player's card is encrypted on-chain and readable by the
+**opponent only**; nobody sees their own card, and validators and other observers see neither. A showdown publishes
+a single bit (who won), never a card. The bot is an opponent like any other: it sees your card, never its own. Built for the Zama Developer Program Season 5 "Confidential Gaming" track.
 
 > **This project is not audited, endorsed or operated by Zama. Use at your own risk.**
+
+## Why it needs FHE
+
+If the cards were plain on-chain state, anyone could read both hands and the game would be over. A trusted dealer
+server would work, but then the dealer can peek, leak or cheat. Here the deal, the comparison and the payout run on
+encrypted values and no party, including the bot's operator, can read the bot's own card.
+
+## How to play
+
+- One hand per table, two players, 2 RUSH deposited each (ante 1 + one possible bet of 1). Unused chips come back.
+- A random card from 1 to 13 is dealt to each seat, both different. You see **your opponent's** card, not yours.
+- Betting is Kuhn-style, no raises: the first player checks or bets; facing a bet you call or fold; if the first
+  player checks, the second may check (showdown) or bet, and then the first calls or folds.
+- A fold or a timeout (45 s per move) ends the hand and the other player wins. Otherwise the higher card wins the pot.
+- Play a friend by sharing the table link, take an open table from the lobby, or play the bot.
+
+**Public:** player addresses, betting history, timing, who won, whether deposits were paid.
+**Private:** both cards. **Not a privacy feature:** chip balances. They are encrypted in storage, but every amount the
+game moves follows from the public record (2 RUSH deposit, a payout of 0 to 4, public faucet and mint amounts), so a
+balance can be recomputed. Details: [docs/privacy-summary.md](docs/privacy-summary.md).
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `packages/contracts` | Hardhat 2 + FHEVM. `RushChip` (ERC-7984 chip + faucet), `MinorityRushGame` |
-| `apps/web` | Vite + React mobile-first UI (viem + `@zama-fhe/sdk`, Privy login, ERC-4337 smart account) |
+| `packages/contracts` | Hardhat 2 + FHEVM. `RushChip` (ERC-7984 chip + faucet + owner mint), `IndianPokerGame` |
+| `apps/web` | Vite + React mobile-first UI (viem + `@zama-fhe/sdk`, Privy login, ERC-4337 smart account), offline demo mode |
 | `apps/sponsor-api` | Vercel function: Privy-authenticated, validated JSON-RPC proxy to Pimlico (gas sponsorship) |
-| `docs/` | Concept doc and UI mockup |
+| `apps/bot-api` | Vercel function: advances the bot one step per call (decrypts the opponent's card, bets) |
+| `docs/` | Deployment guide, privacy summary, gate result, design and plan |
 
 ## Architecture
 
-![System architecture](docs/architecture.png)
+```mermaid
+flowchart LR
+  Web["Web app<br/>encrypt / decrypt in the browser"] -->|"UserOps"| Sponsor["sponsor-api<br/>Privy auth, call allowlist"]
+  Sponsor --> Pimlico["Pimlico bundler + paymaster"]
+  Pimlico --> Game["IndianPokerGame + RushChip<br/>Sepolia, FHEVM"]
+  Web -->|"reads, ping"| Game
+  Web -->|"POST /api/bot"| Bot["bot-api<br/>seat B, own key"]
+  Bot --> Game
+  Game -.->|"ACL: card A to seat B,<br/>card B to seat A"| KMS["Zama relayer / KMS"]
+  Web -.->|"user decrypt: opponent card"| KMS
+```
 
-Editable source: [docs/architecture.drawio](docs/architecture.drawio) (open in draw.io; re-export with
-`drawio -x -f png -s 2 -b 20 -o docs/architecture.png docs/architecture.drawio`).
-
-- **Web app (`apps/web`)** encrypts the side and stake in the browser with `@zama-fhe/sdk` (input proofs and decryption
-  go through the Zama Relayer) and signs with either an injected wallet or a Privy embedded wallet.
-- **Gasless play:** the Privy wallet owns an ERC-4337 smart account. The web app sends JSON-RPC to
-  `apps/sponsor-api`, which verifies the Privy token, validates the request and forwards it to Pimlico (bundler and
-  paymaster). The Pimlico key never reaches the browser.
-- **Contracts (Sepolia):** `MinorityRushGame` does the encrypted comparison through the FHEVM host contracts and takes
-  stakes from `RushChip` (ERC-7984) with `confidentialTransferFrom`.
-- Reads go straight to a Sepolia RPC. With no deployed addresses the web app falls back to an offline demo client.
-
-## Tech stack
-
-| Area | Technology |
-| --- | --- |
-| Confidential compute | Zama Protocol (FHEVM): `@fhevm/solidity`, `@zama-fhe/relayer-sdk`, OpenZeppelin `confidential-contracts` (ERC-7984) |
-| Contracts | Solidity 0.8.27 (EVM cancun), Hardhat 2 + `@fhevm/hardhat-plugin`, ethers 6, TypeChain, Mocha / Chai, solhint |
-| Web | React 19, Vite 8, TypeScript 7, viem 2, `@zama-fhe/sdk`, zod, vite-plugin-pwa (Workbox), Vitest, oxlint |
-| Auth and gasless | Privy (`@privy-io/react-auth`, `@privy-io/node`), ERC-4337 via `permissionless`, Pimlico bundler / paymaster |
-| Backend | Vercel Function (`apps/sponsor-api`, TypeScript, zod, Vitest) |
-| Hosting | Vercel (web and sponsor API as separate projects) |
-| Chain | Ethereum Sepolia (11155111); local development uses the Hardhat mock FHEVM |
-| Tooling | bun workspaces (Node 20+; 24 used locally), draw.io CLI for the architecture diagram |
-
-## Round flow
-
-Rounds follow a fixed daily schedule with four deadlines (UTC seconds-of-day `[10800, 32400, 43200, 50400]`, i.e.
-JST 12:00, 18:00, 21:00 and 23:00). Each deadline has a 90-minute window before it in which a round can be started.
-
-1. `startRound()` → anyone, only inside one of those 90-minute windows. A round still closing or awaiting `finalizeRound`
-   does not block the next start.
-2. `enter(roundId, encSide, encStake, proof)` → pulls chips via ERC-7984 `confidentialTransferFrom` (the player first
-   calls `setOperator(game, until)`); credits the amount **actually transferred**. Stake is clamped to 1–10. 3–100 players.
-3. `closeRound()` → after the deadline (anyone): `FHE.lt` / `FHE.eq` / `FHE.randEbool` pick the winner, which is made
-   publicly decryptable. Fewer than 3 players → round cancelled, stakes refunded.
-4. `finalizeRound(roundId, moonWon, proof)` → anyone submits the decryption proof; `FHE.checkSignatures` verifies it.
-5. `claim(roundId)` → each player receives an encrypted payout (2× stake or 0) and can decrypt only their own result.
-
-**Public:** addresses, player count, timing, final winning side. **Private:** each side, stake, reward, balance, pools.
-
-The faucet gives 20 chips once per 24 hours per address. The web Home screen shows the countdown to the next deadline,
-the daily streak (one freeze earned every 7th consecutive day, at most one stored) and a share grid of recent results.
+- **Deal:** the second player's `joinTable` draws two distinct cards with `FHE.randEuint64` and grants each card to
+  the *other* seat through the ACL. Cards are never made publicly decryptable.
+- **Settlement:** a showdown computes `FHE.gt(cardA, cardB)` and makes only that bit publicly decryptable. Anyone
+  submits the decryption proof; `FHE.checkSignatures` verifies it. Deposits are confirmed in the background.
+- **Gasless play:** the Privy wallet owns an ERC-4337 smart account; `apps/sponsor-api` validates every call before
+  forwarding it to Pimlico. The Pimlico key never reaches the browser.
+- **Bot:** a table reserved for the bot's address. The browser pings `apps/bot-api`, which decrypts the human's card
+  (the rule gives the opponent that view) and acts. The bot's own card is hidden from the bot and from its operator.
 
 ## Run it
 
 Prerequisites: [bun](https://bun.sh) and Node.js 20 or newer.
 
-**1. Local, no keys needed**
-
 ```bash
-bun install --cwd packages/contracts && bun install --cwd apps/web
-bun run test            # 22 contract tests on the mock FHEVM
-bun run dev             # web app; runs an offline demo until contracts are deployed
+bun install
+bun run test            # contract tests on the mock FHEVM
+bun run dev             # web app; shows an offline demo until contracts are configured
 ```
 
-Optional full-round check on a local node (two terminals):
+Force the offline demo with `VITE_DEMO_MODE=true`. In demo mode a built-in bot sits at every table and nothing is
+encrypted.
+
+**Local end-to-end hand** (two terminals):
 
 ```bash
-cd packages/contracts && bunx hardhat node        # terminal A
-cd packages/contracts && bun run smoke:local      # terminal B, expects "OK: full round verified"
+cd packages/contracts && bunx hardhat node
+cd packages/contracts && bun run smoke:poker:local   # expects "OK: full hand verified"
 ```
 
-**2. Against Sepolia (live client)**
+**Sepolia:** see [docs/deployment.md](docs/deployment.md) for keys, deploy, smoke test, web, sponsor and bot setup.
+The live web client needs `apps/web/src/contracts/deployment.sepolia.json` with non-zero addresses (`deploy:sepolia`
+writes it). Without the Privy values you can play with an injected wallet that has Sepolia ETH.
 
-The web app switches to the live client once `apps/web/src/contracts/deployment.sepolia.json` holds non-zero
-addresses (it does after `deploy:sepolia`). Set these in `apps/web/.env.local` (see `apps/web/.env.example`):
-`VITE_SEPOLIA_RPC_URL`, plus `VITE_PRIVY_APP_ID`, `VITE_PRIVY_CLIENT_ID` and `VITE_SPONSOR_API_URL` for email login
-and gasless play. Without the Privy values you can still play with an injected wallet (needs Sepolia ETH for gas).
+### Measured on Sepolia
 
-Rounds can only be started inside the 90-minute window before a deadline, so run the smoke test then:
-
-```bash
-cd packages/contracts && bun run smoke:sepolia   # needs PRIVATE_KEY, PRIVATE_KEY_2, PRIVATE_KEY_3 funded with Sepolia ETH
-```
-
-**3. Sponsor API (gasless play)** runs as a Vercel Function and needs `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`,
-`PIMLICO_API_KEY`, `PIMLICO_SPONSORSHIP_POLICY_ID`, `CHIP_ADDRESS`, `GAME_ADDRESS` and `ALLOWED_WEB_ORIGIN`. See
-[docs/deployment.md](docs/deployment.md#6-publish-the-web-app-vercel) for deploying it and the web app.
-
-Full step-by-step (keys, deploy, smoke test, verification, checklist): [docs/deployment.md](docs/deployment.md).
-
-Deploy to Sepolia (needs `PRIVATE_KEY`, `INFURA_API_KEY` via `.env` or `npx hardhat vars set`):
-
-```bash
-bun run deploy:sepolia   # writes apps/web/src/contracts/deployment.sepolia.json
-bun run export:abi
-```
-
-Redeploying replaces the contracts: old balances and rounds are abandoned. The redeploy runbook (including setting
-`LAUNCH_DAY_KEY` in `apps/web/src/lib/schedule.ts`) is in [docs/deployment.md](docs/deployment.md#redeploy-runbook).
+One full hand between two accounts (`bun run smoke:poker:sepolia`): `joinTable` with the deal 11.7 s, opponent-card
+decrypt 3-7 s, one betting move about 12 s, result decrypt plus `finalizeShowdown` 13.0 s. Full table in
+[docs/season5-gate-result.md](docs/season5-gate-result.md).
 
 ## PWA cache policy
 
 Only the app shell and fonts are cached (`apps/web/src/sw.ts`). Ethereum RPC, relayer/KMS, wallet traffic and every
-non-GET request go straight to the network, and no decrypted value is stored. Offline, the game is not playable
-(the banner says so and actions are disabled). Updates are applied only when the user taps *Update*.
-
-## MVP scope and honest gaps
-
-Implemented: contracts, tests, wallet (injected) flow, user decryption of balance/reward, public decryption of the
-winner, installable PWA (manifest, icons, service worker, install hint after a round, offline banner that pauses
-actions, prompt-style updates) and an Etherscan verify link on the result screen. **Implemented but not yet run with real credentials:**
-Privy email login, ERC-4337 smart account and Pimlico gas sponsorship (see [docs/gasless.md](docs/gasless.md)).
-**Not yet:** Lism CSS, Sepolia deployment and E2E run,
-`confidentialTransferAndCall` entry (we use operator + `confidentialTransferFrom`). The live client has not been run
-against Sepolia yet; only the mock-FHEVM contract tests and the offline demo UI were exercised. The service worker
-builds and passes a syntax check, but could not be exercised at runtime in the dev browser pane (no SW support there);
-check install/offline in Chrome and Safari before shipping.
-
-Known gaps from review:
-
-- "See result" and payout claiming cover only the latest round. If a newer round started before the player returns,
-  an earlier settled round's payout is not offered for claim (its squares still show won/lost).
-- The live Home shows a "Free play" placeholder until the schedule loads, and shows no error if the RPC keeps failing.
-- The live scheduled paths were exercised only by contract tests, the local smoke run and a demo-mode browser run,
-  never against Sepolia.
-- Real close→finalized latency and gas with 100 players are unmeasured (see "Measured on Sepolia" in
-  [docs/deployment.md](docs/deployment.md)).
+non-GET request go straight to the network, and no decrypted value is stored. Offline, the game is not playable.

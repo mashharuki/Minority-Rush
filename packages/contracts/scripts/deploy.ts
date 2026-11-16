@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 import { ethers, network } from "hardhat";
 
-import { DEADLINES_UTC, MAX_PLAYERS, MIN_PLAYERS, WINDOW_SECONDS } from "./schedule.config";
 
 async function main(): Promise<void> {
   const [deployer] = await ethers.getSigners();
@@ -20,18 +19,12 @@ async function main(): Promise<void> {
   await chip.waitForDeployment();
   const chipAddress = await chip.getAddress();
 
-  const game = await (await ethers.getContractFactory("MinorityRushGame")).deploy(
-    chipAddress,
-    [...DEADLINES_UTC],
-    WINDOW_SECONDS,
-    MIN_PLAYERS,
-    MAX_PLAYERS,
-  );
-  await game.waitForDeployment();
-  const gameAddress = await game.getAddress();
+  const poker = await (await ethers.getContractFactory("IndianPokerGame")).deploy(chipAddress);
+  await poker.waitForDeployment();
+  const pokerAddress = await poker.getAddress();
 
   console.log(`RushChip          ${chipAddress}`);
-  console.log(`MinorityRushGame  ${gameAddress}`);
+  console.log(`IndianPokerGame   ${pokerAddress}`);
 
   // Addresses only (no secrets). ABIs come from `bun run export:abi`.
   const outDir = join(__dirname, "..", "..", "..", "apps", "web", "src", "contracts");
@@ -39,7 +32,7 @@ async function main(): Promise<void> {
   const body = {
     chainId: Number((await ethers.provider.getNetwork()).chainId),
     rushChip: chipAddress,
-    game: gameAddress,
+    poker: pokerAddress,
   };
   writeFileSync(join(outDir, `deployment.${network.name}.json`), `${JSON.stringify(body, null, 2)}\n`);
   console.log(`Wrote apps/web/src/contracts/deployment.${network.name}.json`);
