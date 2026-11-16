@@ -15,8 +15,8 @@ export type LoginKind = "email" | "wallet";
  */
 export function createPokerClient(kind: LoginKind): PokerClient {
   if (!isPokerDeployed) return createDemoPokerClient();
-  const isGasless = kind === "email" || isAaEnabled;
-  return createLivePokerClient(isGasless ? connectPrivySession : connectInjectedSession);
+  if (!isAaEnabled && kind === "wallet") return createLivePokerClient(connectInjectedSession);
+  return createLivePokerClient(() => connectPrivySession(kind));
 }
 
 export type { PokerClient } from "./client";
