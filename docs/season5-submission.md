@@ -43,12 +43,12 @@
 
 ## 4. 提出前チェックリスト
 
-- [ ] `bun run test`（コントラクト）、`apps/web`・`apps/sponsor-api`・`apps/bot-api` のテストが通る
-- [ ] Sepolia で `bun run smoke:poker:sepolia` が通る（実測値は `docs/season5-gate-result.md`）
-- [ ] ライブのフロントエンドで、実ウォレット 2 つの 1 ハンドが完走する
+- [x] `bun run test`（コントラクト）、`apps/web`・`apps/sponsor-api`・`apps/bot-api` のテストが通る
+- [x] Sepolia で `bun run smoke:poker:sepolia` が通る（実測値は `docs/season5-gate-result.md`）
+- [x] ライブのフロントエンドで、実ウォレット 2 つの 1 ハンドが完走する
 - [ ] ボットがライブのサイトから動く（ボット用ウォレットに ETH とチップがある）
 - [ ] Pimlico のスポンサーポリシーに支出上限と日次アラートがある
-- [ ] README と画面に免責がある
+- [x] README と画面に免責がある
 - [ ] 動画を撮影して公開した（本人出演）
 - [ ] X 投稿を公開した
 - [ ] フォームを提出した（提出後は編集できない）
