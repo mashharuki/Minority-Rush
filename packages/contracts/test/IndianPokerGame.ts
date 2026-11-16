@@ -445,3 +445,40 @@ describe("IndianPokerGame settlement", function () {
     });
   });
 });
+
+describe("IndianPokerGame HCU", function () {
+  const MAX_TOTAL = 5_000_000;
+  const MAX_DEPTH = 2_000_000;
+
+  it("should keep the join transaction under 5M total and 2M depth HCU", async function () {
+    if (!fhevm.isMock) this.skip();
+    const f = await deployAll();
+    await fund(f, f.alice);
+    await fund(f, f.bob);
+    await f.game.connect(f.alice).createTable(ANYONE);
+    const rc = await (await f.game.connect(f.bob).joinTable(1n)).wait();
+    const hcu = fhevm.computeTransactionHCU(rc!);
+    console.log("      join HCU total/depth:", hcu.globalHCU, hcu.maxHCUDepth);
+    expect(Number(hcu.globalHCU)).to.be.lt(MAX_TOTAL);
+    expect(Number(hcu.maxHCUDepth)).to.be.lt(MAX_DEPTH);
+  });
+
+  it("should keep the showdown action and confirmFunds well inside the limits", async function () {
+    if (!fhevm.isMock) this.skip();
+    const f = await deployAll();
+    await fund(f, f.alice);
+    await fund(f, f.bob);
+    await openAndJoin(f);
+    await f.game.connect(f.alice).act(1n, CHECK);
+    const actRc = await (await f.game.connect(f.bob).act(1n, CHECK)).wait();
+    const actHcu = fhevm.computeTransactionHCU(actRc!);
+    const [hA, hB] = await f.game.getFundsHandles(1n);
+    const res = await fhevm.publicDecrypt([hA, hB]);
+    const confirmRc = await (await f.game.confirmFunds(1n, true, true, res.decryptionProof)).wait();
+    const confirmHcu = fhevm.computeTransactionHCU(confirmRc!);
+    console.log("      showdown act HCU:", actHcu.globalHCU, actHcu.maxHCUDepth);
+    console.log("      confirmFunds HCU:", confirmHcu.globalHCU, confirmHcu.maxHCUDepth);
+    expect(Number(actHcu.globalHCU)).to.be.lt(MAX_TOTAL);
+    expect(Number(confirmHcu.globalHCU)).to.be.lt(MAX_TOTAL);
+  });
+});
