@@ -1,7 +1,7 @@
 import { createSmartAccountClient } from "permissionless";
 import { toSimpleSmartAccount } from "permissionless/accounts";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
-import { createPublicClient, createWalletClient, custom, http, type Address, type WalletClient } from "viem";
+import { createPublicClient, createWalletClient, custom, http, type Account, type Address, type Transport, type WalletClient } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
 import { sepolia } from "viem/chains";
 
@@ -37,7 +37,9 @@ const sponsorTransport = custom({
  * An external wallet (MetaMask etc.) would prompt for every UserOperation and decryption permit. Instead it signs one
  * message that derives a browser-held game key, and that key owns the smart account and signs everything silently.
  */
-async function createGameOwner(wallet: OwnerWallet): Promise<{ address: Address; client: WalletClient }> {
+type GameOwner = { address: Address; client: WalletClient<Transport, typeof sepolia, Account> };
+
+async function createGameOwner(wallet: OwnerWallet): Promise<GameOwner> {
   const external = createWalletClient({ account: wallet.address, chain: sepolia, transport: custom(wallet.provider) });
   const account = await deriveGameAccount(wallet.address, (message) => external.signMessage({ account: wallet.address, message }));
   return { address: account.address, client: createWalletClient({ account, chain: sepolia, transport: http(env.rpcUrl) }) };
@@ -47,7 +49,7 @@ async function createGameOwner(wallet: OwnerWallet): Promise<{ address: Address;
 export async function connectPrivySession(): Promise<Session> {
   const wallet = await privyBridge.login();
   const publicClient = createPublicClient({ chain: sepolia, transport: http(env.rpcUrl) });
-  const owner = wallet.isEmbedded
+  const owner: GameOwner = wallet.isEmbedded
     ? { address: wallet.address, client: createWalletClient({ account: wallet.address, chain: sepolia, transport: custom(wallet.provider) }) }
     : await createGameOwner(wallet);
   const ownerWalletClient = owner.client;
