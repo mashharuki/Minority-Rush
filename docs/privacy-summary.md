@@ -10,7 +10,7 @@ Evidence level: **tested** = covered by an automated test in this repo; **measur
 | --- | --- | --- |
 | Card of seat A | Seat B only (and B's chip observer for smart accounts) | tested (`IndianPokerGame tables`), measured |
 | Card of seat B | Seat A only (and A's chip observer) | tested, measured |
-| Each player's chip balance and transfer amounts | The holder (ERC-7984) | by design (OpenZeppelin ERC-7984) |
+| Each player's chip balance and transfer amounts, as stored | The holder (ERC-7984) | by design (OpenZeppelin ERC-7984); see the next section: not a privacy feature here |
 
 Neither card is ever made publicly decryptable, not after a showdown and not after a fold (tested). A player's own
 card is refused by the ACL (tested, and refused by the real KMS on Sepolia: measured). The contract itself holds
@@ -24,10 +24,14 @@ bits, `okA`/`okB`); that a table exists and who sits at it; all transaction timi
 
 ## What this does not hide
 
+- **Chip balances can be recomputed.** They are encrypted in storage, but every amount this game moves is determined
+  by public data: the 2 RUSH deposit, the payout (0 to 4, from the public betting history and the winner), and the
+  faucet and mint amounts. Anyone can add these up per address. Do not rely on balance privacy.
+
 - **The betting pattern is public.** The game is about reading it.
 - **Metadata:** who plays whom and when. FHE hides values, not participation.
 - **Short balances:** a player who cannot pay the 2 RUSH deposit is revealed as underfunded (the hand is voided and
-  refunded). Honest players with enough chips reveal nothing about their balance.
+  refunded). Beyond what the public amounts already imply (first bullet), a funded player reveals nothing more.
 - **Collusion:** a human can tell their opponent what the opponent's own card is (both players see each other's
   card). With two players the opponent has no reason to help; the game is heads-up on purpose.
 - **The bot sees the human's card**, as any opponent does. Its operator holds the bot's key and could read the

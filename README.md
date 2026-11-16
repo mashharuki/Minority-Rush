@@ -3,8 +3,8 @@
 > Your card is shown to your opponent and hidden from you. Read their bets, not your hand.
 
 Heads-up Indian poker on the **Zama Protocol (FHEVM)**. Each player's card is encrypted on-chain and readable by the
-**opponent only**; nobody sees their own card, and the operator and the validators see neither. A showdown publishes
-a single bit (who won), never a card. Built for the Zama Developer Program Season 5 "Confidential Gaming" track.
+**opponent only**; nobody sees their own card, and validators and other observers see neither. A showdown publishes
+a single bit (who won), never a card. The bot is an opponent like any other: it sees your card, never its own. Built for the Zama Developer Program Season 5 "Confidential Gaming" track.
 
 > **This project is not audited, endorsed or operated by Zama. Use at your own risk.**
 
@@ -24,7 +24,9 @@ encrypted values and no party, including the bot's operator, can read the bot's 
 - Play a friend by sharing the table link, take an open table from the lobby, or play the bot.
 
 **Public:** player addresses, betting history, timing, who won, whether deposits were paid.
-**Private:** both cards, every chip balance. Details: [docs/privacy-summary.md](docs/privacy-summary.md).
+**Private:** both cards. **Not a privacy feature:** chip balances. They are encrypted in storage, but every amount the
+game moves follows from the public record (2 RUSH deposit, a payout of 0 to 4, public faucet and mint amounts), so a
+balance can be recomputed. Details: [docs/privacy-summary.md](docs/privacy-summary.md).
 
 ## Layout
 
