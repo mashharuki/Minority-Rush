@@ -94,7 +94,9 @@ export function PrivyAuthProvider({ children }: { children: ReactNode }) {
       clientId={env.privyClientId || undefined}
       config={{
         loginMethods: ["email", "wallet"],
-        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
+        // Sign silently with the embedded wallet: a hand needs many signatures (user operations and
+        // decryption permits) and a confirmation dialog for each one ruins the game flow.
+        embeddedWallets: { showWalletUIs: false, ethereum: { createOnLogin: "users-without-wallets" } },
         appearance: { theme: "dark", accentColor: "#f99a57" },
       }}
     >
