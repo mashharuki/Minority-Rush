@@ -161,10 +161,23 @@ export function createLivePokerClient(connectSession: () => Promise<Session>, de
     return calls;
   };
 
-  const sendGame = async (functionName: string, args: unknown[], onStep: OnStep, withOnboarding = false): Promise<void> => {
+  /**
+   * Simulates first so the player sees the contract's named error (table full, not your turn, ...) instead of a raw
+   * revert. A first-time batch that also approves the game cannot be simulated before it runs, so it is sent as is.
+   */
+  const sendGame = async (
+    functionName: string,
+    args: unknown[],
+    onStep: OnStep,
+    withOnboarding = false,
+    isSimulated = true,
+  ): Promise<void> => {
     const { s } = need();
-    const { addresses } = await live();
+    const { addresses, publicClient } = await live();
     const pre = withOnboarding ? await onboardingCalls(s) : [];
+    if (isSimulated && pre.length === 0) {
+      await publicClient.simulateContract({ address: addresses.game, abi: pokerAbi, functionName, args, account: s.account });
+    }
     await s.send([...pre, callOf(addresses.game, pokerAbi, functionName, args)], onStep);
   };
 
@@ -193,7 +206,7 @@ export function createLivePokerClient(connectSession: () => Promise<Session>, de
       throw error;
     }
     try {
-      await sendGame(functionName, args, onStep);
+      await sendGame(functionName, args, onStep, false, false);
     } catch (error) {
       if (!isDone(await getTable(id))) throw error;
     }

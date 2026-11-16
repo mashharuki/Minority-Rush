@@ -11,7 +11,7 @@ export type TableState = {
   busy: string | null;
   error: string | null;
   /** Set when the bot refused the table; the screen offers a normal table instead. */
-  botProblem: "bot_busy" | "bot_broke" | null;
+  botProblem: "bot_busy" | "bot_broke" | "bot_unreachable" | null;
 };
 
 export type TableController = {
@@ -41,6 +41,7 @@ const BOT_RETRY_MS = 10_000;
 const BOT_MESSAGE: Record<string, string> = {
   bot_busy: "The bot is busy. Cancel this table and try again shortly, or open a normal table.",
   bot_broke: "The bot is out of chips. Cancel this table and open a normal one.",
+  bot_unreachable: "The bot is not responding. Cancel this table and open a normal one, or try again shortly.",
 };
 const REVEALED_PHASES = new Set(["betting", "ended", "settled"]);
 
@@ -57,7 +58,11 @@ export function createTableController(client: PokerClient, options: ControllerOp
   let tableId = 0;
   let generation = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
-  let chainOffsetMs = 0;
+  /** Chain time minus local time. Block times lag real time, so the largest value seen is the closest estimate. */
+  let chainOffsetMs = Number.NEGATIVE_INFINITY;
+  let isSettling = false;
+  let isClaiming = false;
+  let isActing = false;
   let serverView: TableView | null = null;
   let optimistic: TableView | null = null;
   let revealStarted = false;
@@ -65,7 +70,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
   let claimedDeadline = -1;
   let lastPing = { key: "", at: Number.NEGATIVE_INFINITY };
 
-  const chainNow = (): number => now() + chainOffsetMs;
+  const chainNow = (): number => now() + (Number.isFinite(chainOffsetMs) ? chainOffsetMs : 0);
   const set = (patch: Partial<TableState>): void => {
     state = { ...state, ...patch };
     listeners.forEach((l) => l());
@@ -88,15 +93,19 @@ export function createTableController(client: PokerClient, options: ControllerOp
 
   async function settle(gen: number, view: TableView): Promise<void> {
     const due = (view.phase === "betting" && !view.fundsConfirmed) || (view.phase === "ended" && (!view.fundsConfirmed || view.endKind === "showdown"));
-    if (!due) return;
+    // One background transaction at a time, and never while the player's own move is being sent: two sends from
+    // the same account can collide (repeated wallet prompts, nonce clashes on smart accounts).
+    if (!due || isSettling || isActing) return;
     const key = `${view.phase}:${view.fundsConfirmed}`;
     if (lastSettle.key === key && now() - lastSettle.at < SETTLE_RETRY_MS) return;
     lastSettle = { key, at: now() };
+    isSettling = true;
     try {
       await client.settleIfReady(tableId, step(gen));
     } catch (error) {
       console.error("settleIfReady failed", { tableId, error: errorMessage(error) });
     } finally {
+      isSettling = false;
       if (gen === generation) set({ busy: null });
     }
   }
@@ -104,13 +113,16 @@ export function createTableController(client: PokerClient, options: ControllerOp
   async function timeoutIfDue(gen: number, view: TableView): Promise<void> {
     const isOpponentsTurn = view.phase === "betting" && view.turn !== null && view.turn !== view.mySeat;
     if (!isOpponentsTurn || view.turnDeadlineMs === 0 || chainNow() < view.turnDeadlineMs) return;
-    if (claimedDeadline === view.turnDeadlineMs) return;
+    if (claimedDeadline === view.turnDeadlineMs || isClaiming || isActing) return;
     claimedDeadline = view.turnDeadlineMs;
+    isClaiming = true;
     try {
       await client.claimTimeout(tableId, step(gen));
     } catch (error) {
+      claimedDeadline = -1; // a failed claim must be tried again on the next poll
       console.error("claimTimeout failed", { tableId, error: errorMessage(error) });
     } finally {
+      isClaiming = false;
       if (gen === generation) set({ busy: null });
     }
   }
@@ -138,11 +150,16 @@ export function createTableController(client: PokerClient, options: ControllerOp
     lastPing = { key, at: now() };
     try {
       const result = await options.ping(tableId);
-      if (gen !== generation || result.ok) return;
-      const known = result.reason === "bot_busy" || result.reason === "bot_broke" ? result.reason : null;
-      set({ error: BOT_MESSAGE[result.reason] ?? "The bot did not respond. Try again shortly.", botProblem: known });
+      if (gen !== generation) return;
+      if (result.ok) {
+        if (state.botProblem) set({ botProblem: null, error: null });
+        return;
+      }
+      const known = result.reason === "bot_busy" || result.reason === "bot_broke" ? result.reason : "bot_unreachable";
+      set({ error: BOT_MESSAGE[known], botProblem: known });
     } catch (error) {
       console.error("bot ping failed", { tableId, error: errorMessage(error) });
+      if (gen === generation) set({ error: BOT_MESSAGE.bot_unreachable, botProblem: "bot_unreachable" });
     }
   }
 
@@ -153,7 +170,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
     try {
       const [v, chain] = await Promise.all([client.getTable(tableId), client.chainNowMs()]);
       if (gen !== generation) return;
-      chainOffsetMs = chain - now();
+      chainOffsetMs = Math.max(chainOffsetMs, chain - now());
       view = v;
     } catch (error) {
       if (gen === generation) set({ error: errorMessage(error) });
@@ -161,7 +178,8 @@ export function createTableController(client: PokerClient, options: ControllerOp
     }
     serverView = view;
     if (optimistic && view.history.length >= optimistic.history.length) optimistic = null;
-    set({ view: optimistic ?? view, error: null });
+    // A bot problem stays on screen until the bot answers again; any other error is cleared by a good poll.
+    set({ view: optimistic ?? view, error: state.botProblem ? state.error : null });
     await reveal(gen, view);
     await settle(gen, view);
     await timeoutIfDue(gen, view);
@@ -185,6 +203,10 @@ export function createTableController(client: PokerClient, options: ControllerOp
       lastSettle = { key: "", at: 0 };
       claimedDeadline = -1;
       lastPing = { key: "", at: Number.NEGATIVE_INFINITY };
+      chainOffsetMs = Number.NEGATIVE_INFINITY;
+      isSettling = false;
+      isClaiming = false;
+      isActing = false;
       state = EMPTY;
       listeners.forEach((l) => l());
       await poll();
@@ -199,6 +221,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
       const next = applyOptimistic(base, base.mySeat, action, chainNow());
       if (next === base) return;
       optimistic = next;
+      isActing = true;
       set({ view: next, busy: "Sending your move", error: null });
       try {
         await client.act(tableId, action, step(gen));
@@ -207,6 +230,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
         if (gen === generation) set({ view: serverView, error: errorMessage(error) });
         return;
       } finally {
+        isActing = false;
         if (gen === generation) set({ busy: null });
       }
       if (state.view) await pingBot(gen, state.view, true);

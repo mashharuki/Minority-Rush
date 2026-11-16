@@ -213,3 +213,78 @@ describe("tableController bot pings", () => {
     await expect(c.start(1, "0xA")).resolves.toBeUndefined();
   });
 });
+
+describe("tableController review fixes", () => {
+  it("should not start a second background settle while the first is still pending", async () => {
+    const { client, spies } = fake(baseView({ fundsConfirmed: false }));
+    let release: () => void = () => undefined;
+    spies.settleIfReady.mockImplementation(() => new Promise<undefined>((resolve) => (release = () => resolve(undefined))));
+    let t = 0;
+    const c = createTableController(client, { pollMs: 0, now: () => t });
+    const first = c.start(1, "0xA");
+    await new Promise((resolve) => setTimeout(resolve, 10)); // the first poll is now inside the pending settle
+    t += 60_000; // far past the retry throttle, so only the in-flight guard can stop a second send
+    const second = c.poll();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(spies.settleIfReady).toHaveBeenCalledTimes(1);
+    release();
+    await Promise.all([first, second]);
+  });
+
+  it("should not settle in the background while the player's own move is being sent", async () => {
+    const { client, spies } = fake(baseView({ fundsConfirmed: true }));
+    let release: () => void = () => undefined;
+    spies.act.mockImplementation(() => new Promise<undefined>((resolve) => (release = () => resolve(undefined))));
+    const c = createTableController(client, { pollMs: 0 });
+    await c.start(1, "0xA");
+    const pending = c.act("bet");
+    const { state } = { state: spies };
+    state.getTable.mockImplementation(async () => baseView({ fundsConfirmed: false }));
+    await c.poll();
+    expect(spies.settleIfReady).not.toHaveBeenCalled();
+    release();
+    await pending;
+  });
+
+  it("should keep the countdown steady when later polls see the same block", async () => {
+    let t = 0;
+    const { client } = fake(baseView({ turnDeadlineMs: 1_045_000 }), 1_000_000);
+    const c = createTableController(client, { pollMs: 0, now: () => t });
+    await c.start(1, "0xA");
+    t = 5_000;
+    await c.poll();
+    expect(c.secondsLeft()).toBe(40);
+  });
+
+  it("should try the timeout claim again when the first attempt fails", async () => {
+    const { client, spies } = fake(baseView({ turn: "B", turnDeadlineMs: 1_045_000 }), 1_046_000);
+    spies.claimTimeout.mockRejectedValueOnce(new Error("network")).mockResolvedValue(undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const c = createTableController(client, { pollMs: 0 });
+    await c.start(1, "0xA");
+    await c.poll();
+    expect(spies.claimTimeout).toHaveBeenCalledTimes(2);
+  });
+
+  it("should keep the bot message visible across later polls when the bot refused the table", async () => {
+    const { client } = fake(baseView({ phase: "open", playerB: null, turn: null }));
+    const ping = vi.fn(async () => ({ ok: false, reason: "bot_busy" }) as const);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    await c.poll();
+    expect(c.getState().error).toMatch(/busy/i);
+  });
+
+  it("should report an unreachable bot instead of only logging it", async () => {
+    const { client } = fake(baseView({ phase: "open", playerB: null, turn: null }));
+    const ping = vi.fn(async () => {
+      throw new Error("Failed to fetch");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    await c.poll();
+    expect(c.getState().botProblem).toBe("bot_unreachable");
+    expect(c.getState().error).toMatch(/bot/i);
+  });
+});

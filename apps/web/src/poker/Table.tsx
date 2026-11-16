@@ -66,6 +66,7 @@ export function TableScreen({ client, id, account, onLeave, onRematch, onCancel,
   const pot = view.contribA + view.contribB;
   const outcome = outcomeOf(view);
   const isOver = view.phase === "settled" || view.phase === "voided" || view.phase === "cancelled";
+  const canClaimTimeout = view.phase === "betting" && view.turn !== null && view.turn !== view.mySeat && t.secondsLeft === 0;
   const inviteUrl = `${window.location.origin}${window.location.pathname}?table=${id}`;
 
   return (
@@ -123,10 +124,22 @@ export function TableScreen({ client, id, account, onLeave, onRematch, onCancel,
         </div>
       )}
 
+      {canClaimTimeout && (
+        <button className="c--btn" type="button" onClick={() => void t.claimTimeout()}>
+          Claim the win, opponent timed out
+        </button>
+      )}
+
       {view.phase === "open" && (
         <div className="p--stack">
-          <p className="p--sub">Send this link to a friend, or wait for an opponent from the lobby.</p>
-          <input className="p--link" readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} aria-label="Invite link" />
+          {vsBot ? (
+            <p className="p--sub">Waiting for the bot to sit down.</p>
+          ) : (
+            <>
+              <p className="p--sub">Send this link to a friend, or wait for an opponent from the lobby.</p>
+              <input className="p--link" readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} aria-label="Invite link" />
+            </>
+          )}
           <button className="c--btn is--secondary" type="button" onClick={onCancel}>
             Cancel table
           </button>

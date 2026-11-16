@@ -212,3 +212,42 @@ describe("livePokerClient botPing", () => {
     expect(await client.botPing?.(5)).toEqual({ ok: false, reason: "bot_busy" });
   });
 });
+
+describe("livePokerClient simulation before sending", () => {
+  const revert = (name: string): BaseError => {
+    const data = encodeErrorResult({ abi: pokerAbi, errorName: name });
+    return new BaseError("simulation failed", {
+      cause: new ContractFunctionRevertedError({ abi: pokerAbi, data, functionName: "joinTable" }),
+    });
+  };
+
+  it("should reject with the contract's error and send nothing when the table is full", async () => {
+    const { client, send } = setup({
+      lastFaucetAt: 500n,
+      isOperator: true,
+      simulate: async () => {
+        throw revert("TableFull");
+      },
+    });
+    await client.connect();
+    await expect(client.joinTable(1, noop)).rejects.toThrow();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("should simulate a move before sending it", async () => {
+    const { client, send, publicClient } = setup({ lastFaucetAt: 500n, isOperator: true });
+    await client.connect();
+    await client.act(1, "bet", noop);
+    expect(publicClient.simulateContract).toHaveBeenCalledWith(
+      expect.objectContaining({ functionName: "act", args: [1n, 1] }),
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("should skip the simulation when the first-time batch also approves the game", async () => {
+    const { client, publicClient } = setup({ lastFaucetAt: 0n, isOperator: false });
+    await client.connect();
+    await client.joinTable(1, noop);
+    expect(publicClient.simulateContract).not.toHaveBeenCalled();
+  });
+});

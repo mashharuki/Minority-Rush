@@ -6,6 +6,7 @@ import { usePwa } from "@/lib/pwa";
 import { errorMessage } from "@/lib/types";
 
 import { createPokerClient, type LoginKind } from "./index";
+import { resolveTableEntry } from "./entry";
 import { LobbyScreen } from "./Lobby";
 import { TableScreen } from "./Table";
 
@@ -17,6 +18,12 @@ const inviteTable = (): number | null => {
   const raw = new URLSearchParams(window.location.search).get("table");
   const n = raw === null ? NaN : Number(raw);
   return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+/** Keeps the open table in the address bar so a reload resumes the hand instead of losing it. */
+const rememberTable = (id: number | null, isBot = false): void => {
+  const url = id === null ? window.location.pathname : `${window.location.pathname}?table=${id}${isBot ? "&bot=1" : ""}`;
+  window.history.replaceState(null, "", url);
 };
 
 export default function PokerApp() {
@@ -58,9 +65,13 @@ export default function PokerApp() {
       setScreen("setup");
       const invited = inviteTable();
       if (invited !== null) {
-        setStep("Taking your seat");
-        await chosen.joinTable(invited, setStep);
-        window.history.replaceState(null, "", window.location.pathname);
+        const isBot = new URLSearchParams(window.location.search).get("bot") === "1";
+        if ((await resolveTableEntry(chosen, invited)) === "join") {
+          setStep("Taking your seat");
+          await chosen.joinTable(invited, setStep);
+        }
+        rememberTable(invited, isBot);
+        setIsVsBot(isBot);
         setTableId(invited);
         setScreen("table");
         return;
@@ -90,6 +101,7 @@ export default function PokerApp() {
       setStep("Opening a table");
       const id = await client.createTable(null, setStep);
       setIsVsBot(false);
+      rememberTable(id);
       setTableId(id);
       setScreen("table");
     });
@@ -101,6 +113,7 @@ export default function PokerApp() {
       const isLiveBot = client.mode === "live";
       const id = await client.createTable(isLiveBot ? env.botAddress : null, setStep);
       setIsVsBot(isLiveBot);
+      rememberTable(id, isLiveBot);
       setTableId(id);
       setScreen("table");
     });
@@ -112,6 +125,7 @@ export default function PokerApp() {
       setStep("Opening a table");
       const id = await client.createTable(null, setStep);
       setIsVsBot(false);
+      rememberTable(id);
       setTableId(id);
     });
 
@@ -120,6 +134,7 @@ export default function PokerApp() {
       setStep("Taking your seat");
       await client.joinTable(id, setStep);
       setIsVsBot(false);
+      rememberTable(id);
       setTableId(id);
       setScreen("table");
     });
@@ -131,6 +146,7 @@ export default function PokerApp() {
     });
 
   const leave = () => {
+    rememberTable(null);
     setTableId(null);
     setBalance(null);
     setScreen("lobby");
@@ -192,9 +208,22 @@ export default function PokerApp() {
                 </p>
                 <ErrorBox message={error} />
                 {error && (
-                  <button className="c--btn" type="button" onClick={() => void connect(kind)} disabled={isBusy}>
-                    Try again
-                  </button>
+                  <>
+                    <button className="c--btn" type="button" onClick={() => void connect(kind)} disabled={isBusy}>
+                      Try again
+                    </button>
+                    <button
+                      className="c--btn is--secondary"
+                      type="button"
+                      onClick={() => {
+                        rememberTable(null);
+                        setError(null);
+                        setScreen("lobby");
+                      }}
+                    >
+                      Back to lobby
+                    </button>
+                  </>
                 )}
               </div>
             )}
