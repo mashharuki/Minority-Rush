@@ -84,8 +84,6 @@
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
     "chain": "hardhat node --network hardhat",
     "export:abi": "hardhat run scripts/export-abi.ts",
-    "smoke:local": "hardhat run scripts/smoke.ts --network localhost",
-    "smoke:sepolia": "hardhat run scripts/smoke.ts --network sepolia",
     "smoke:poker:local": "hardhat run scripts/smoke-poker.ts --network localhost",
     "smoke:poker:sepolia": "hardhat run scripts/smoke-poker.ts --network sepolia",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",

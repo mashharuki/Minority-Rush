@@ -10,7 +10,7 @@ import {
 } from "@openzeppelin/confidential-contracts/token/ERC7984/extensions/ERC7984ObserverAccess.sol";
 
 /// @title RushChip
-/// @notice Confidential (ERC-7984) play-money chip for Minority Rush. Balances and transfer amounts are encrypted.
+/// @notice Confidential (ERC-7984) play-money chip for Blind Bluff. Balances and transfer amounts are encrypted.
 /// @dev Public: holder addresses, observers, faucet claim timing. Private: balances and amounts. No real-world value.
 ///      A smart-account holder registers its owner EOA as `observer` (`setObserver(self, owner)`), which gets
 ///      permanent ACL access to that holder's balance and transfer amounts so the owner can user-decrypt them.
@@ -41,6 +41,7 @@ contract RushChip is ZamaEthereumConfig, ERC7984ObserverAccess, Ownable {
     }
 
     /// @notice Owner-only mint for testnet play money (bot bankroll). Chips have no real-world value.
+    /// @dev fhevm-lint plaintext-input is justified: the amount is public by design (owner-only, play money).
     function mint(address to, uint64 amount) external onlyOwner {
         // Public constant amount: trivial encryption is fine here.
         _mint(to, FHE.asEuint64(amount));
