@@ -7,7 +7,7 @@ import { env } from "./env";
 const LOGIN_TIMEOUT_MS = 5 * 60_000;
 const POLL_MS = 250;
 
-export type OwnerWallet = { address: `0x${string}`; provider: EIP1193Provider };
+export type OwnerWallet = { address: `0x${string}`; provider: EIP1193Provider; isEmbedded: boolean };
 
 type Snapshot = {
   ready: boolean;
@@ -52,10 +52,12 @@ export const privyBridge = {
     // Prefer the embedded wallet created at email login; fall back to a linked external wallet.
     const wallet = snapshot.wallets.find((w) => w.walletClientType === "privy") ?? snapshot.wallets[0];
     if (!wallet) throw new Error("No wallet available after login");
-    await wallet.switchChain(11155111);
+    const isEmbedded = wallet.walletClientType === "privy";
+    // An external wallet only signs one message (see gameKey.ts), so it needs no chain switch (no extra prompt).
+    if (isEmbedded) await wallet.switchChain(11155111);
     // Privy and viem declare structurally different EIP-1193 types; at runtime both are a standard `request()` provider.
     const provider = (await wallet.getEthereumProvider()) as unknown as EIP1193Provider;
-    return { address: wallet.address as `0x${string}`, provider };
+    return { address: wallet.address as `0x${string}`, provider, isEmbedded };
   },
   /** Fresh Privy access token for the sponsor API (never stored or logged). */
   getAccessToken: (): Promise<string | null> => snapshot.getAccessToken(),

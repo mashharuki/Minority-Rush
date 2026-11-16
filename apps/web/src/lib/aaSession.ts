@@ -1,12 +1,13 @@
 import { createSmartAccountClient } from "permissionless";
 import { toSimpleSmartAccount } from "permissionless/accounts";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
-import { createPublicClient, createWalletClient, custom, http } from "viem";
+import { createPublicClient, createWalletClient, custom, http, type Address, type WalletClient } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
 import { sepolia } from "viem/chains";
 
 import { env } from "./env";
-import { privyBridge } from "./privyBridge";
+import { deriveGameAccount } from "./gameKey";
+import { privyBridge, type OwnerWallet } from "./privyBridge";
 import type { Session } from "./session";
 
 const entryPoint = { address: entryPoint07Address, version: "0.7" } as const;
@@ -32,16 +33,26 @@ const sponsorTransport = custom({
   },
 });
 
+/**
+ * An external wallet (MetaMask etc.) would prompt for every UserOperation and decryption permit. Instead it signs one
+ * message that derives a browser-held game key, and that key owns the smart account and signs everything silently.
+ */
+async function createGameOwner(wallet: OwnerWallet): Promise<{ address: Address; client: WalletClient }> {
+  const external = createWalletClient({ account: wallet.address, chain: sepolia, transport: custom(wallet.provider) });
+  const account = await deriveGameAccount(wallet.address, (message) => external.signMessage({ account: wallet.address, message }));
+  return { address: account.address, client: createWalletClient({ account, chain: sepolia, transport: http(env.rpcUrl) }) };
+}
+
 /** Privy login (email OTP or wallet), then a gas-sponsored ERC-4337 smart account owned by that wallet. */
 export async function connectPrivySession(): Promise<Session> {
-  const owner = await privyBridge.login();
-  const ownerWalletClient = createWalletClient({
-    account: owner.address,
-    chain: sepolia,
-    transport: custom(owner.provider),
-  });
+  const wallet = await privyBridge.login();
   const publicClient = createPublicClient({ chain: sepolia, transport: http(env.rpcUrl) });
+  const owner = wallet.isEmbedded
+    ? { address: wallet.address, client: createWalletClient({ account: wallet.address, chain: sepolia, transport: custom(wallet.provider) }) }
+    : await createGameOwner(wallet);
+  const ownerWalletClient = owner.client;
   const account = await toSimpleSmartAccount({ client: publicClient, owner: ownerWalletClient, entryPoint });
+  // Everything below uses the account that actually signs: the embedded wallet, or the derived game key.
   const pimlico = createPimlicoClient({ transport: sponsorTransport, entryPoint });
   const smartAccountClient = createSmartAccountClient({
     account,
