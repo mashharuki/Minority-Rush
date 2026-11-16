@@ -5,8 +5,7 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 export const env = {
   rpcUrl: (import.meta.env.VITE_SEPOLIA_RPC_URL as string | undefined) || "https://ethereum-sepolia-rpc.publicnode.com",
   chipAddress: (import.meta.env.VITE_RUSH_CHIP_ADDRESS as string | undefined) || deployment.rushChip,
-  gameAddress: (import.meta.env.VITE_GAME_ADDRESS as string | undefined) || deployment.game,
-  pokerAddress: (import.meta.env.VITE_POKER_ADDRESS as string | undefined) || ((deployment as { poker?: string }).poker ?? ZERO),
+  pokerAddress: (import.meta.env.VITE_POKER_ADDRESS as string | undefined) || deployment.poker,
   /** The bot's on-chain address (public) and its API; both are empty when the bot is not configured. */
   botAddress: (import.meta.env.VITE_BOT_ADDRESS as string | undefined) || "",
   botApiUrl: (import.meta.env.VITE_BOT_API_URL as string | undefined) || "",
@@ -20,7 +19,5 @@ export const env = {
 
 export const isPokerDeployed: boolean = env.chipAddress !== ZERO && env.pokerAddress !== ZERO && !env.forceDemo;
 
-export const isDeployed: boolean = env.chipAddress !== ZERO && env.gameAddress !== ZERO && !env.forceDemo;
-
 /** Email login + gasless smart-account play needs Privy and the sponsor API; otherwise only injected wallets. */
-export const isAaEnabled: boolean = isDeployed && env.privyAppId !== "" && env.sponsorApiUrl !== "";
+export const isAaEnabled: boolean = isPokerDeployed && env.privyAppId !== "" && env.sponsorApiUrl !== "";

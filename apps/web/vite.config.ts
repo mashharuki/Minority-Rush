@@ -17,9 +17,9 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false,
       manifest: {
-        name: 'Minority Rush',
-        short_name: 'Minority Rush',
-        description: 'One choice. One secret stake. Outsmart the crowd.',
+        name: 'Blind Bluff',
+        short_name: 'Blind Bluff',
+        description: 'Heads-up poker where your card is shown to your opponent and hidden from you.',
         start_url: '/',
         scope: '/',
         display: 'standalone',
