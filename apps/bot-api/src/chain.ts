@@ -15,6 +15,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
 import type { BotConfig } from "./config";
+import { isActiveBotTable } from "./activity";
 import type { Chain, Phase, TableSnapshot } from "./handler";
 import type { PokerAction, Seat } from "./types";
 
@@ -175,8 +176,7 @@ export function createBotRuntime(config: BotConfig): BotRuntime {
       const lowest = count > BigInt(RECENT_TABLES) ? count - BigInt(RECENT_TABLES) + 1n : 1n;
       for (let id = count; id >= lowest && id > 0n; id--) {
         const t = await readTable(id);
-        const isMine = t.b !== null && t.b.toLowerCase() === account.address.toLowerCase();
-        if (isMine && (t.phase === "betting" || t.phase === "ended")) found.push({ id, creator: t.a });
+        if (isActiveBotTable(t, account.address)) found.push({ id, creator: t.a });
       }
       return found;
     },
