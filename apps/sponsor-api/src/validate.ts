@@ -38,11 +38,13 @@ const CHIP_SELECTORS = new Set<Hex>([
   sel('setObserver(address,address)'),
 ])
 const GAME_SELECTORS = new Set<Hex>([
-  sel('startRound()'),
-  sel('enter(uint256,bytes32,bytes32,bytes)'),
-  sel('closeRound(uint256)'),
-  sel('finalizeRound(uint256,bool,bytes)'),
-  sel('claim(uint256)'),
+  sel('createTable(address)'),
+  sel('joinTable(uint256)'),
+  sel('cancelTable(uint256)'),
+  sel('act(uint256,uint8)'),
+  sel('claimTimeout(uint256)'),
+  sel('confirmFunds(uint256,bool,bool,bytes)'),
+  sel('finalizeShowdown(uint256,bool,bytes)'),
 ])
 
 /** Decodes SimpleAccount v0.7 `execute` / `executeBatch` call data. Returns null if it is neither. */

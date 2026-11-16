@@ -26,7 +26,17 @@ const chipAbi = parseAbi([
   'function setObserver(address account, address newObserver)',
   'function confidentialTransfer(address to, bytes32 amount, bytes proof)',
 ])
-const gameAbi = parseAbi(['function startRound()', 'function claim(uint256 roundId)'])
+const gameAbi = parseAbi([
+  'function createTable(address opponent)',
+  'function joinTable(uint256 id)',
+  'function cancelTable(uint256 id)',
+  'function act(uint256 id, uint8 action)',
+  'function claimTimeout(uint256 id)',
+  'function confirmFunds(uint256 id, bool okA, bool okB, bytes proof)',
+  'function finalizeShowdown(uint256 id, bool aWins, bytes proof)',
+  'function startRound()',
+  'function enter(uint256 roundId, bytes32 choice, bytes32 stake, bytes proof)',
+])
 
 const call = (to: `0x${string}`, data: Hex, value = 0n): Call => ({ to, data, value })
 
@@ -67,12 +77,34 @@ describe('validateUserOp', () => {
     expect(validateUserOp(op(batch, { factory: SIMPLE_ACCOUNT_FACTORY_V07 }), allow)).toEqual({ ok: true })
   })
 
-  it('should accept game calls', () => {
-    const calls = [
-      call(GAME, encodeFunctionData({ abi: gameAbi, functionName: 'startRound' })),
-      call(GAME, encodeFunctionData({ abi: gameAbi, functionName: 'claim', args: [1n] })),
+  it.each([
+    ['createTable', [OTHER]],
+    ['joinTable', [1n]],
+    ['cancelTable', [1n]],
+    ['act', [1n, 1]],
+    ['claimTimeout', [1n]],
+    ['confirmFunds', [1n, true, true, '0x1234']],
+    ['finalizeShowdown', [1n, true, '0x1234']],
+  ] as const)('should accept %s on the game', (functionName, args) => {
+    const data = encodeFunctionData({ abi: gameAbi, functionName, args } as never)
+    expect(validateUserOp(op([call(GAME, data)]), allow)).toEqual({ ok: true })
+  })
+
+  it.each([
+    ['startRound', []],
+    ['enter', [1n, `0x${'0'.repeat(64)}`, `0x${'0'.repeat(64)}`, '0x']],
+  ] as const)('should reject the old %s selector on the game', (functionName, args) => {
+    const data = encodeFunctionData({ abi: gameAbi, functionName, args } as never)
+    expect(validateUserOp(op([call(GAME, data)]), allow)).toMatchObject({ ok: false, reason: 'game function not allowed' })
+  })
+
+  it('should accept the first-time batch of faucet, setOperator(game) and joinTable', () => {
+    const batch = [
+      faucet,
+      call(CHIP, encodeFunctionData({ abi: chipAbi, functionName: 'setOperator', args: [GAME, 1_900_000_000] })),
+      call(GAME, encodeFunctionData({ abi: gameAbi, functionName: 'joinTable', args: [1n] })),
     ]
-    expect(validateUserOp(op(calls), allow)).toEqual({ ok: true })
+    expect(validateUserOp(op(batch), allow)).toEqual({ ok: true })
   })
 
   it('should reject unknown targets', () => {
