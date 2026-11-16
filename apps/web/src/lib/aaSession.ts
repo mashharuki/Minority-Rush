@@ -7,7 +7,7 @@ import { sepolia } from "viem/chains";
 
 import { env } from "./env";
 import { deriveGameAccount } from "./gameKey";
-import { privyBridge, type OwnerWallet } from "./privyBridge";
+import { privyBridge, type LoginMethod, type OwnerWallet } from "./privyBridge";
 import type { Session } from "./session";
 
 const entryPoint = { address: entryPoint07Address, version: "0.7" } as const;
@@ -46,8 +46,8 @@ async function createGameOwner(wallet: OwnerWallet): Promise<GameOwner> {
 }
 
 /** Privy login (email OTP or wallet), then a gas-sponsored ERC-4337 smart account owned by that wallet. */
-export async function connectPrivySession(): Promise<Session> {
-  const wallet = await privyBridge.login();
+export async function connectPrivySession(method?: LoginMethod): Promise<Session> {
+  const wallet = await privyBridge.login(method);
   const publicClient = createPublicClient({ chain: sepolia, transport: http(env.rpcUrl) });
   const owner: GameOwner = wallet.isEmbedded
     ? { address: wallet.address, client: createWalletClient({ account: wallet.address, chain: sepolia, transport: custom(wallet.provider) }) }
