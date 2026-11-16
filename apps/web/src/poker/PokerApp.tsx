@@ -52,9 +52,9 @@ export default function PokerApp() {
       setKind(next);
       const chosen = clients[next];
       setAddress(await chosen.connect());
+      // No separate onboarding transaction: faucet, operator approval and observer ride along with the first
+      // createTable / joinTable as ONE user operation (see livePokerClient).
       setScreen("setup");
-      setStep("Preparing your player");
-      await chosen.onboard(setStep);
       const invited = inviteTable();
       if (invited !== null) {
         setStep("Taking your seat");
