@@ -30,8 +30,13 @@ async function main(): Promise<void> {
   await game.waitForDeployment();
   const gameAddress = await game.getAddress();
 
+  const poker = await (await ethers.getContractFactory("IndianPokerGame")).deploy(chipAddress);
+  await poker.waitForDeployment();
+  const pokerAddress = await poker.getAddress();
+
   console.log(`RushChip          ${chipAddress}`);
   console.log(`MinorityRushGame  ${gameAddress}`);
+  console.log(`IndianPokerGame   ${pokerAddress}`);
 
   // Addresses only (no secrets). ABIs come from `bun run export:abi`.
   const outDir = join(__dirname, "..", "..", "..", "apps", "web", "src", "contracts");
@@ -40,6 +45,7 @@ async function main(): Promise<void> {
     chainId: Number((await ethers.provider.getNetwork()).chainId),
     rushChip: chipAddress,
     game: gameAddress,
+    poker: pokerAddress,
   };
   writeFileSync(join(outDir, `deployment.${network.name}.json`), `${JSON.stringify(body, null, 2)}\n`);
   console.log(`Wrote apps/web/src/contracts/deployment.${network.name}.json`);

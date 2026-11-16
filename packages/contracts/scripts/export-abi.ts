@@ -8,7 +8,8 @@ async function main(): Promise<void> {
   mkdirSync(outDir, { recursive: true });
   const rushChipAbi = (await artifacts.readArtifact("RushChip")).abi;
   const gameAbi = (await artifacts.readArtifact("MinorityRushGame")).abi;
-  writeFileSync(join(outDir, "abi.json"), `${JSON.stringify({ rushChipAbi, gameAbi })}\n`);
+  const pokerAbi = (await artifacts.readArtifact("IndianPokerGame")).abi;
+  writeFileSync(join(outDir, "abi.json"), `${JSON.stringify({ rushChipAbi, gameAbi, pokerAbi })}\n`);
   console.log("Wrote apps/web/src/contracts/abi.json");
 }
 
