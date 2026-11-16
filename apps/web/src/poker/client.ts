@@ -4,6 +4,8 @@ import type { PokerAction, TableView } from "./types";
 
 export type { OnStep };
 
+export type BotPingResult = { ok: true } | { ok: false; reason: string };
+
 /** One interface, two implementations: Sepolia (live) and an offline simulation (demo). */
 export interface PokerClient {
   readonly mode: "live" | "demo";
@@ -25,4 +27,6 @@ export interface PokerClient {
   settleIfReady(id: number, onStep: OnStep): Promise<void>;
   /** Chain time in unix ms (so timers never depend on the browser clock). */
   chainNowMs(): Promise<number>;
+  /** Asks the bot to take its next step on this table (live mode with a configured bot only). */
+  botPing?(id: number): Promise<BotPingResult>;
 }

@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import { Disclaimer, ErrorBox } from "@/components";
 
 import type { PokerClient } from "./client";
@@ -39,10 +41,16 @@ type Props = {
   onLeave: () => void;
   onRematch: () => void;
   onCancel: () => void;
+  /** True when the opponent is the bot: the screen asks the bot API for each of its moves. */
+  vsBot: boolean;
+  /** Offered when the bot refuses the table. */
+  onNormalTable: () => void;
 };
 
-export function TableScreen({ client, id, account, onLeave, onRematch, onCancel }: Props) {
-  const t = useTable(client, id, account);
+export function TableScreen({ client, id, account, onLeave, onRematch, onCancel, vsBot, onNormalTable }: Props) {
+  const botPing = client.botPing?.bind(client);
+  const ping = useCallback((tableId: number) => botPing!(tableId), [botPing]);
+  const t = useTable(client, id, account, vsBot && botPing ? ping : undefined);
   const view = t.view;
   if (!view) {
     return (
@@ -153,6 +161,11 @@ export function TableScreen({ client, id, account, onLeave, onRematch, onCancel 
         </div>
       )}
       <ErrorBox message={t.error} />
+      {t.botProblem && (
+        <button className="c--btn" type="button" onClick={onNormalTable}>
+          Open a normal table
+        </button>
+      )}
       <Disclaimer />
     </div>
   );

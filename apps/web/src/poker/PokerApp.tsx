@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppBar, Disclaimer, ErrorBox, OfflineBanner, StatusBar, UpdateBanner } from "@/components";
-import { isAaEnabled } from "@/lib/env";
+import { env, isAaEnabled } from "@/lib/env";
 import { usePwa } from "@/lib/pwa";
 import { errorMessage } from "@/lib/types";
 
@@ -29,6 +29,7 @@ export default function PokerApp() {
   const [balance, setBalance] = useState<number | null>(null);
   const [openTables, setOpenTables] = useState<number[]>([]);
   const [tableId, setTableId] = useState<number | null>(null);
+  const [isVsBot, setIsVsBot] = useState(false);
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -82,18 +83,43 @@ export default function PokerApp() {
     return () => clearInterval(timer);
   }, [screen, refreshLobby]);
 
+  const canPlayBot = client.mode === "demo" || (env.botAddress !== "" && env.botApiUrl !== "");
+
   const create = () =>
     run(async () => {
       setStep("Opening a table");
       const id = await client.createTable(null, setStep);
+      setIsVsBot(false);
       setTableId(id);
       setScreen("table");
+    });
+
+  /** Demo: the built-in bot sits down by itself. Live: a table reserved for the bot's address, driven by its API. */
+  const playBot = () =>
+    run(async () => {
+      setStep("Opening a table");
+      const isLiveBot = client.mode === "live";
+      const id = await client.createTable(isLiveBot ? env.botAddress : null, setStep);
+      setIsVsBot(isLiveBot);
+      setTableId(id);
+      setScreen("table");
+    });
+
+  /** The bot refused the table: take it down and open a normal one. */
+  const normalTable = () =>
+    run(async () => {
+      if (tableId !== null) await client.cancelTable(tableId, setStep);
+      setStep("Opening a table");
+      const id = await client.createTable(null, setStep);
+      setIsVsBot(false);
+      setTableId(id);
     });
 
   const join = (id: number) =>
     run(async () => {
       setStep("Taking your seat");
       await client.joinTable(id, setStep);
+      setIsVsBot(false);
       setTableId(id);
       setScreen("table");
     });
@@ -179,9 +205,9 @@ export default function PokerApp() {
                 openTables={openTables}
                 isBusy={isBusy}
                 error={error}
-                canPlayBot={client.mode === "demo"}
+                canPlayBot={canPlayBot}
                 onShowBalance={() => void showBalance()}
-                onPlayBot={() => void create()}
+                onPlayBot={() => void playBot()}
                 onCreate={() => void create()}
                 onJoin={(id) => void join(id)}
               />
@@ -193,8 +219,10 @@ export default function PokerApp() {
                 id={tableId}
                 account={address}
                 onLeave={leave}
-                onRematch={() => void create()}
+                onRematch={() => void (isVsBot || client.mode === "demo" ? playBot() : create())}
                 onCancel={() => void cancel()}
+                vsBot={isVsBot}
+                onNormalTable={() => void normalTable()}
               />
             )}
           </section>

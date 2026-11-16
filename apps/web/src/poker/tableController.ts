@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/types";
 
-import type { PokerClient } from "./client";
+import type { BotPingResult, PokerClient } from "./client";
 import { applyOptimistic, secondsLeft as secondsLeftFrom } from "./rules";
 import type { PokerAction, TableView } from "./types";
 
@@ -10,6 +10,8 @@ export type TableState = {
   opponentCard: number | null;
   busy: string | null;
   error: string | null;
+  /** Set when the bot refused the table; the screen offers a normal table instead. */
+  botProblem: "bot_busy" | "bot_broke" | null;
 };
 
 export type TableController = {
@@ -25,10 +27,21 @@ export type TableController = {
   secondsLeft(): number;
 };
 
-export type ControllerOptions = { pollMs?: number; now?: () => number };
+export type ControllerOptions = {
+  pollMs?: number;
+  now?: () => number;
+  /** Set when the opponent is the bot: asks the bot to take its next step on this table. */
+  ping?: (tableId: number) => Promise<BotPingResult>;
+};
 
-const EMPTY: TableState = { view: null, opponentCard: null, busy: null, error: null };
+const EMPTY: TableState = { view: null, opponentCard: null, busy: null, error: null, botProblem: null };
 const SETTLE_RETRY_MS = 4_000;
+/** Same state is not pinged again before this: the bot's transaction is still in flight. */
+const BOT_RETRY_MS = 10_000;
+const BOT_MESSAGE: Record<string, string> = {
+  bot_busy: "The bot is busy. Cancel this table and try again shortly, or open a normal table.",
+  bot_broke: "The bot is out of chips. Cancel this table and open a normal one.",
+};
 const REVEALED_PHASES = new Set(["betting", "ended", "settled"]);
 
 /**
@@ -50,6 +63,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
   let revealStarted = false;
   let lastSettle = { key: "", at: 0 };
   let claimedDeadline = -1;
+  let lastPing = { key: "", at: Number.NEGATIVE_INFINITY };
 
   const chainNow = (): number => now() + chainOffsetMs;
   const set = (patch: Partial<TableState>): void => {
@@ -107,6 +121,31 @@ export function createTableController(client: PokerClient, options: ControllerOp
     timer = null;
   }
 
+  const botNeedsStep = (view: TableView): boolean => {
+    if (view.phase === "open") return true;
+    if (view.phase === "betting") {
+      const botTimedOut = view.turn === "A" && view.turnDeadlineMs > 0 && chainNow() >= view.turnDeadlineMs;
+      return view.turn === "B" || !view.fundsConfirmed || botTimedOut;
+    }
+    if (view.phase === "ended") return !view.fundsConfirmed || view.endKind === "showdown";
+    return false;
+  };
+
+  async function pingBot(gen: number, view: TableView, isForced = false): Promise<void> {
+    if (!options.ping || !botNeedsStep(view)) return;
+    const key = `${view.phase}:${view.history.length}:${view.turn}:${view.fundsConfirmed}`;
+    if (!isForced && lastPing.key === key && now() - lastPing.at < BOT_RETRY_MS) return;
+    lastPing = { key, at: now() };
+    try {
+      const result = await options.ping(tableId);
+      if (gen !== generation || result.ok) return;
+      const known = result.reason === "bot_busy" || result.reason === "bot_broke" ? result.reason : null;
+      set({ error: BOT_MESSAGE[result.reason] ?? "The bot did not respond. Try again shortly.", botProblem: known });
+    } catch (error) {
+      console.error("bot ping failed", { tableId, error: errorMessage(error) });
+    }
+  }
+
   async function poll(): Promise<void> {
     const gen = generation;
     if (tableId === 0) return;
@@ -126,6 +165,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
     await reveal(gen, view);
     await settle(gen, view);
     await timeoutIfDue(gen, view);
+    await pingBot(gen, view);
   }
 
   return {
@@ -144,6 +184,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
       revealStarted = false;
       lastSettle = { key: "", at: 0 };
       claimedDeadline = -1;
+      lastPing = { key: "", at: Number.NEGATIVE_INFINITY };
       state = EMPTY;
       listeners.forEach((l) => l());
       await poll();
@@ -168,6 +209,7 @@ export function createTableController(client: PokerClient, options: ControllerOp
       } finally {
         if (gen === generation) set({ busy: null });
       }
+      if (state.view) await pingBot(gen, state.view, true);
       await poll();
     },
     async claimTimeout() {

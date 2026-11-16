@@ -89,6 +89,7 @@
     "smoke:poker:local": "hardhat run scripts/smoke-poker.ts --network localhost",
     "smoke:poker:sepolia": "hardhat run scripts/smoke-poker.ts --network sepolia",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "fund:bot:sepolia": "hardhat run scripts/fund-bot.ts --network sepolia",
     "verify:sepolia": "hardhat verify --network sepolia"
   },
   "overrides": {

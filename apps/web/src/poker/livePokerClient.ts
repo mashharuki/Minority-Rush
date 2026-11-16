@@ -4,7 +4,7 @@ import abis from "@/contracts/abi.json";
 import type { Session } from "@/lib/session";
 import { revertErrorName } from "@/lib/types";
 
-import type { OnStep, PokerClient } from "./client";
+import type { BotPingResult, OnStep, PokerClient } from "./client";
 import type { PokerAction, Seat, TablePhase, TableView } from "./types";
 
 const pokerAbi = abis.pokerAbi as Abi;
@@ -25,7 +25,14 @@ export type SdkLike = {
   };
 };
 
+export type BotApi = {
+  url: string;
+  getAccessToken: () => Promise<string | null>;
+  fetchFn: typeof fetch;
+};
+
 export type LiveDeps = {
+  botApi: BotApi;
   publicClient: PublicClient;
   createSdk: (session: Session) => Promise<SdkLike> | SdkLike;
   addresses: { chip: Address; game: Address };
@@ -107,12 +114,18 @@ export function createLivePokerClient(connectSession: () => Promise<Session>, de
   const live = async (): Promise<LiveDeps> => {
     if (resolved) return resolved;
     const { env } = await import("@/lib/env");
+    const { privyBridge } = await import("@/lib/privyBridge");
     const { createPublicClient, http } = await import("viem");
     const { sepolia } = await import("viem/chains");
     resolved = {
       publicClient: deps.publicClient ?? (createPublicClient({ chain: sepolia, transport: http(env.rpcUrl) }) as PublicClient),
       createSdk: deps.createSdk ?? defaultCreateSdk,
       addresses: deps.addresses ?? { chip: env.chipAddress as Address, game: env.pokerAddress as Address },
+      botApi: deps.botApi ?? {
+        url: env.botApiUrl,
+        getAccessToken: () => privyBridge.getAccessToken(),
+        fetchFn: (...args) => fetch(...args),
+      },
     };
     return resolved;
   };
@@ -283,6 +296,25 @@ export function createLivePokerClient(connectSession: () => Promise<Session>, de
     async chainNowMs() {
       const { publicClient } = await live();
       return Number((await publicClient.getBlock()).timestamp) * 1000;
+    },
+
+    async botPing(id): Promise<BotPingResult> {
+      const { s } = need();
+      const { botApi } = await live();
+      if (!botApi.url) return { ok: false, reason: "bot_unavailable" };
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      const body: { tableId: number; signature?: Hex } = { tableId: id };
+      if (s.kind === "privy") {
+        const accessToken = await botApi.getAccessToken();
+        if (!accessToken) return { ok: false, reason: "unauthorized" };
+        headers.authorization = `Bearer ${accessToken}`;
+      } else {
+        // An injected wallet proves it created the table by signing "bot:<id>" (verified by the bot API).
+        body.signature = await s.ownerWalletClient.signMessage({ account: s.owner, message: `bot:${id}` });
+      }
+      const response = await botApi.fetchFn(botApi.url, { method: "POST", headers, body: JSON.stringify(body) });
+      const json = (await response.json()) as { ok?: boolean; reason?: string };
+      return json.ok ? { ok: true } : { ok: false, reason: json.reason ?? "bot_unavailable" };
     },
   };
 }

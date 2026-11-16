@@ -38,7 +38,7 @@ function fake(initial: TableView, chainNowMs = 1_000_000) {
     revealOpponentCard: vi.fn(async () => 9),
     settleIfReady: vi.fn(async () => undefined),
     chainNowMs: vi.fn(async () => state.now),
-  } satisfies Record<keyof PokerClient, unknown>;
+  } satisfies Record<Exclude<keyof PokerClient, "botPing">, unknown>;
   return { client: client as unknown as PokerClient, spies: client, state };
 }
 
@@ -143,5 +143,73 @@ describe("tableController", () => {
     expect(c.secondsLeft()).toBe(45);
     vi.advanceTimersByTime(10_000);
     expect(c.secondsLeft()).toBe(35);
+  });
+});
+
+describe("tableController bot pings", () => {
+  const ok = { ok: true } as const;
+
+  it("should call the bot endpoint after the user acts when playing the bot", async () => {
+    const { client } = fake(baseView());
+    const ping = vi.fn(async () => ok);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    ping.mockClear();
+    await c.act("bet");
+    expect(ping).toHaveBeenCalledWith(1);
+  });
+
+  it("should ping the bot when it is the bot's turn", async () => {
+    const { client } = fake(baseView({ turn: "B" }));
+    const ping = vi.fn(async () => ok);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    expect(ping).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not ping again within the retry window when nothing changed", async () => {
+    let t = 0;
+    const { client } = fake(baseView({ turn: "B" }));
+    const ping = vi.fn(async () => ok);
+    const c = createTableController(client, { pollMs: 0, ping, now: () => t });
+    await c.start(1, "0xA");
+    t += 3_000;
+    await c.poll();
+    expect(ping).toHaveBeenCalledTimes(1);
+    t += 20_000;
+    await c.poll();
+    expect(ping).toHaveBeenCalledTimes(2);
+  });
+
+  it("should not ping when it is the human's turn and nothing is pending", async () => {
+    const { client } = fake(baseView({ turn: "A", fundsConfirmed: true }));
+    const ping = vi.fn(async () => ok);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    expect(ping).not.toHaveBeenCalled();
+  });
+
+  it("should show a busy message when the bot endpoint returns bot_busy", async () => {
+    const { client } = fake(baseView({ phase: "open", playerB: null, turn: null }));
+    const ping = vi.fn(async () => ({ ok: false, reason: "bot_busy" }) as const);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    expect(c.getState().error).toMatch(/busy/i);
+    expect(c.getState().botProblem).toBe("bot_busy");
+  });
+
+  it("should show an out-of-chips message when the bot is broke", async () => {
+    const { client } = fake(baseView({ phase: "open", playerB: null, turn: null }));
+    const ping = vi.fn(async () => ({ ok: false, reason: "bot_broke" }) as const);
+    const c = createTableController(client, { pollMs: 0, ping });
+    await c.start(1, "0xA");
+    expect(c.getState().error).toMatch(/chips/i);
+    expect(c.getState().botProblem).toBe("bot_broke");
+  });
+
+  it("should never ping when no ping function is given", async () => {
+    const { client } = fake(baseView({ turn: "B" }));
+    const c = createTableController(client, { pollMs: 0 });
+    await expect(c.start(1, "0xA")).resolves.toBeUndefined();
   });
 });

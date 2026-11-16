@@ -161,3 +161,54 @@ describe("livePokerClient onboarding batch", () => {
     expect(callsOf(send.mock.calls)).toHaveLength(1);
   });
 });
+
+describe("livePokerClient botPing", () => {
+  const withBot = (kind: "privy" | "injected") => {
+    const fetchFn = vi.fn(async (_url: string, _init: { body: string; headers: Record<string, string> }) =>
+      ({ json: async () => ({ ok: false, reason: "bot_busy" }) }) as unknown as Response,
+    );
+    const signMessage = vi.fn(async () => "0xabcdef" as Hex);
+    const base = setup();
+    const session = {
+      kind,
+      account: ME,
+      owner: ME,
+      ownerWalletClient: { signMessage },
+      needsObserver: false,
+      send: base.send,
+    } as unknown as Session;
+    const client = createLivePokerClient(async () => session, {
+      publicClient: base.publicClient as never,
+      createSdk: () => base.sdk,
+      addresses: { chip: CHIP, game: GAME },
+      botApi: { url: "https://bot.example/api/bot", getAccessToken: async () => "privy-token", fetchFn: fetchFn as never },
+    });
+    return { client, fetchFn, signMessage };
+  };
+
+  it("should post the table id with the Privy token when the player logged in with email", async () => {
+    const { client, fetchFn } = withBot("privy");
+    await client.connect();
+    await client.botPing?.(5);
+    const [url, init] = fetchFn.mock.calls[0] ?? [];
+    expect(url).toBe("https://bot.example/api/bot");
+    expect(init?.headers.authorization).toBe("Bearer privy-token");
+    expect(JSON.parse(init?.body ?? "{}")).toEqual({ tableId: 5 });
+  });
+
+  it("should sign bot:<table id> when the player uses an injected wallet", async () => {
+    const { client, fetchFn, signMessage } = withBot("injected");
+    await client.connect();
+    await client.botPing?.(5);
+    expect(signMessage).toHaveBeenCalledWith({ account: ME, message: "bot:5" });
+    const init = fetchFn.mock.calls[0]?.[1];
+    expect(JSON.parse(init?.body ?? "{}")).toEqual({ tableId: 5, signature: "0xabcdef" });
+    expect(init?.headers.authorization).toBeUndefined();
+  });
+
+  it("should return the refusal reason when the bot endpoint is busy", async () => {
+    const { client } = withBot("privy");
+    await client.connect();
+    expect(await client.botPing?.(5)).toEqual({ ok: false, reason: "bot_busy" });
+  });
+});

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import type { PokerClient } from "./client";
+import type { BotPingResult, PokerClient } from "./client";
 import { createTableController, type TableState } from "./tableController";
 import type { PokerAction } from "./types";
 
@@ -11,8 +11,13 @@ export type UseTable = TableState & {
 };
 
 /** Follows one table. Everything decrypted or optimistic is dropped when the table or the account changes. */
-export function useTable(client: PokerClient, id: number | null, account: string | null): UseTable {
-  const controller = useMemo(() => createTableController(client), [client]);
+export function useTable(
+  client: PokerClient,
+  id: number | null,
+  account: string | null,
+  ping?: (tableId: number) => Promise<BotPingResult>,
+): UseTable {
+  const controller = useMemo(() => createTableController(client, { ping }), [client, ping]);
   const state = useSyncExternalStore(controller.subscribe, controller.getState);
   const [, setTick] = useState(0);
 
